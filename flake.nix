@@ -77,6 +77,7 @@
               jinja2
               sqlalchemy
               flask
+              flask-sqlalchemy
               python-dotenv
               pandas
               numpy

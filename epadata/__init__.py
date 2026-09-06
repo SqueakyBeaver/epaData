@@ -3,6 +3,9 @@ import os
 import dotenv
 from flask import Flask
 
+from epadata.routes import blueprints
+
+
 def create_app(test_config=None):
     dotenv.load_dotenv()
 
@@ -13,13 +16,17 @@ def create_app(test_config=None):
     )
 
     if test_config is None:
-        app.config.from_pyfile('config.py', silent=True)
+        app.config.from_pyfile("config.py", silent=True)
     else:
         app.config.from_mapping(test_config)
 
     os.makedirs(app.instance_path, exist_ok=True)
 
+    for bp in blueprints:
+        app.register_blueprint(bp)
+
     return app
+
 
 app = create_app()
 

@@ -1,24 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <title>{% block title %}{% endblock %} - epaData</title>
-<script
-  src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
-  integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
-  crossorigin="anonymous"
-></script>
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='css/style.css') }}"
-/>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
+        integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
+        crossorigin="anonymous"></script>
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}" />
 <nav>
-  <h1>epaData</h1>
+    <h1>epaData</h1>
 </nav>
 <section class="content">
-  <header>{% block header %}{% endblock %}</header>
-  {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
-  {% endfor %}
-  <div id="content" class="container">
-    {% block content %}
-    {% endblock %}
-  </div>
+    <header>
+        {% block header %}{% endblock %}
+    </header>
+    {% for message in get_flashed_messages() %}
+        <div class="flash">{{ message }}</div>
+    {% endfor %}
+    <div id="content" class="container">
+        {% block content %}{% endblock %}
+    </div>
 </section>

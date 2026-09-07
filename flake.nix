@@ -70,22 +70,27 @@
             venvVersionWarn
           '';
 
-          packages =
-            (with python.pkgs; [
-              venvShellHook
-              pip
-              jinja2
-              sqlalchemy
-              flask
-              flask-sqlalchemy
-              python-dotenv
-              pandas
-              numpy
-            ])
-            ++ [
-              self.formatter.${system}
-              pkgs.sqlite
-            ];
+          packages = [
+            (
+              python.withPackages
+              (python-pkgs:
+                with python.pkgs; [
+                  venvShellHook
+                  pip
+                  jinja2
+                  sqlalchemy
+                  flask
+                  flask-sqlalchemy
+                  python-dotenv
+                  pandas
+                  numpy
+                ])
+            )
+
+            self.formatter.${system}
+            pkgs.sqlite
+            pkgs.djlint
+          ];
         };
       }
     );

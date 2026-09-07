@@ -1,1 +1,5 @@
-<p>Hello I have changed mwahahaha</p>
+{% if content %}
+    <p>{{ content }}</p>
+{% else %}
+    <p>Hm something went wrong</p>
+{% endif %}

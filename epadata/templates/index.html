@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-
 {% block title %}Home{% endblock %}
-
 {% block header %}
-  <h1></h1>
+    <h1></h1>
 {% endblock %}
-
 {% block content %}
-<button type="button" hx-get="{{ url_for('.test_route') }}" hx-target="next output" >Click meeee</button>
-  <output id="output">OOh will I change???</output>
+    <form hx-post="{{ url_for(".submit_form") }}" hx-target="next output">
+        <input name="content" value="empty" />
+        <button type="button">Click meeee</button>
+    </form>
+    <output id="output">OOh will I change???</output>
 {% endblock %}

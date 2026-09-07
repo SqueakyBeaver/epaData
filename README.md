@@ -37,7 +37,8 @@ epadata/
 ## Frontend
 - HTML [Jinja2](https://jinja.palletsprojects.com) templates
 - [htmx v4](https://four.htmx.org/docs) for easy reactivity
-- [Bootstrap CSS](https://getbootstrap.com/docs) for easy styling
+- [Tailwind CSS](https://getbootstrap.com/docs) and [daisyUI](https://daisyui.com)
+  because I don't particularly want to write a bunch of CSS/JS for this project
 
 ## Backend
 - [Flask](https://flask.palletsprojects.com) application
@@ -45,9 +46,9 @@ epadata/
   - Note: all routes should return HTML in order for htmx to work properly.
     For routes that might return a JSON response typically,
     use Flask's `render_template()` function to render an HTML fragment
-    
+
     Example:
-    
+
     `routes/example.py`
     ```py
     @app.route("/")

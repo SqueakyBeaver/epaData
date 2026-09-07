@@ -3,19 +3,35 @@
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
         integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
         crossorigin="anonymous"></script>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <link rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}" />
-<nav>
-    <h1>epaData</h1>
-</nav>
-<section class="content">
-    <header>
-        {% block header %}{% endblock %}
-    </header>
-    {% for message in get_flashed_messages() %}
-        <div class="flash">{{ message }}</div>
-    {% endfor %}
-    <div id="content" class="container">
-        {% block content %}{% endblock %}
+<body>
+    <div class="navbar bg-base-200 shadow-sm">
+        <div class="flex-1">
+            <a class="btn btn-ghost text-xl" href="{{ url_for('index.home_page') }}">epaData</a>
+        </div>
+        <div class="flex-none">
+            <ul class="menu menu-horizontal px-1">
+                <li>
+                    <a href="{{ url_for('index.home_page') }}"></a>
+                </li>
+                <!-- todo: add other top-level pages -->
+            </ul>
+        </div>
     </div>
-</section>
+    <div class="max-w-9/10 mx-auto">
+        <header>
+            {% block header %}{% endblock %}
+        </header>
+        {% for message in get_flashed_messages() %}
+            <div class="flash">{{ message }}</div>
+        {% endfor %}
+        <div id="content" class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</body>

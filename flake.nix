@@ -21,21 +21,7 @@
           }
       );
 
-    /*
-    Change this value ({major}.{min}) to
-    update the Python virtual-environment
-    version. When you do this, make sure
-    to delete the `.venv` directory to
-    have the hook rebuild it for the new
-    version, since it won't overwrite an
-    existing one. After this, reload the
-    development shell to rebuild it.
-    You'll see a warning asking you to
-    do this when version mismatches are
-    present. For safety, removal should
-    be a manual step, even if trivial.
-    */
-    version = "3.13";
+    version = "3.14";
   in {
     devShells = forEachSupportedSystem (
       {
@@ -70,27 +56,24 @@
             venvVersionWarn
           '';
 
-          packages = [
-            (
-              python.withPackages
-              (python-pkgs:
-                with python.pkgs; [
-                  venvShellHook
-                  pip
-                  jinja2
-                  sqlalchemy
-                  flask
-                  flask-sqlalchemy
-                  python-dotenv
-                  pandas
-                  numpy
-                ])
-            )
-
-            self.formatter.${system}
-            pkgs.sqlite
-            pkgs.djlint
-          ];
+          packages =
+            (with python.pkgs; [
+              venvShellHook
+              pip
+              jinja2
+              sqlalchemy
+              flask
+              flask-sqlalchemy
+              python-dotenv
+              pandas
+              numpy
+              requests
+            ])
+            ++ [
+              self.formatter.${system}
+              pkgs.sqlite
+              pkgs.djlint
+            ];
         };
       }
     );

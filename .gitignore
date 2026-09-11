@@ -221,3 +221,5 @@ __marimo__/
 # nix and nix-direnv
 .direnv
 result/
+
+*.sqlite

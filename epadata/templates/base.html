@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <title>{% block title %}{% endblock %} - epaData</title>
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
-        integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
-        crossorigin="anonymous"></script>
-<link href="https://cdn.jsdelivr.net/npm/daisyui@5"
-      rel="stylesheet"
-      type="text/css" />
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<link rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}" />
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
+            integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
+            crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5"
+          rel="stylesheet"
+          type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    {% block head %}{% endblock %}
+    <link rel="stylesheet" type="text/tailwindcss"
+          href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
 <body>
     <div class="navbar bg-base-200 shadow-sm">
         <div class="flex-1">
@@ -35,3 +38,4 @@
         </div>
     </div>
 </body>
+{% block scripts %}{% endblock %}

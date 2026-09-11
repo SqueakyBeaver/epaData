@@ -1,0 +1,10 @@
+<fieldset class="fieldset w-44 basis-44">
+    <legend class="fieldset-legend">Facility</legend>
+    <select class="select" placeholder="Facility" id="facility-select">
+        <option disabled value="">Please select a facility</option>
+        {% for facility in facility_codes.itertuples() %}
+            <option value="{{ facility.facilityId }}">{{ facility.facilityName }}</option>
+        {% endfor %}
+    </select>
+    <span class="label">Optional</span>
+</fieldset>

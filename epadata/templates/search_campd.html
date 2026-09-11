@@ -1,22 +1,70 @@
 {% extends "base.html" %}
 {% block title %}CAMPD Explorer{% endblock %}
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/scripts/choices.min.js"
+            integrity="sha256-y2gFrdpOrzJR/lrb3l8vYsgOocKbeZmxWFRqd9HhkdY="
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css"
+          integrity="sha256-pTYPT12p21vMW/XFNnPkuRYiqtvjrFcnpgX/mmsU2gs="
+          crossorigin="anonymous" />
+{% endblock %}
 {% block header %}
     <h1 class="mx-auto">Explore and search EPA CAMPD data</h1>
 {% endblock %}
 {% block content %}
     {# Search stuff #}
-    <form hx-post="{{ url_for('index.submit_form') }}" hx-target="next output">
-        <fieldset class="fieldset w-48">
-            <legend class="fieldset-legend">State/Territory</legend>
-            <select class="select" id="state-select">
-                <option disabled selected>Choose a State/Territory</option>
-                {% for code in state_codes %}
-                    <option value="{{ code.stateCode }}">{{ code.stateName }}</option>
-                {% endfor %}
-            </select>
-            <span class="label" for="state-select">Optional</span>
-        </fieldset>
+    <form hx-post="{{ url_for('index.submit_form') }}"
+          hx-target="next output"
+          class="w-full max-w-80%">
+        <div class="flex flex-row space-x-4">
+            <fieldset class="fieldset w-56 basis-56">
+                <legend class="fieldset-legend">State/Territory</legend>
+                <select class="select" id="state-select">
+                    <option disabled selected>Choose a State/Territory</option>
+                    {% for code in state_codes %}
+                        <option value="{{ code.stateCode }}">{{ code.stateName }}</option>
+                    {% endfor %}
+                </select>
+                <span class="label">Optional</span>
+            </fieldset>
+            <fieldset class="fieldset w-42 basis-42">
+                <legend class="fieldset-legend">Year(s)</legend>
+                <input type="text"
+                       class="input"
+                       name="years"
+                       required
+                       placeholder="Ex 2015, 2019-2022"
+                       hx-post="{{ url_for('.submit_years') }}"
+                       hx-trigger="input delay:500ms, keyup[key=='Enter']"
+                       hx-target="#facility-fieldset" />
+                <span class="label">Required</span>
+            </fieldset>
+            <fieldset class="fieldset w-44 basis-44">
+                <legend class="fieldset-legend">Fuel Type</legend>
+                <select class="select" id="fuel-select">
+                    <option disabled selected>Choose a Fuel Type</option>
+                    {% for fuel in fuel_type_codes %}
+                        <option value="{{ fuel.fuelTypeCode }}">{{ fuel.fuelTypeDescription }}</option>
+                    {% endfor %}
+                </select>
+                <span class="label">Optional</span>
+            </fieldset>
+            <fieldset class="fieldset w-44 basis-44" id="facility-fieldset">
+                <legend class="fieldset-legend">Facility</legend>
+                <select disabled class="select" placeholder="Facility" id="facility-select"></select>
+                <span class="label">Enter Year(s) First</span>
+            </fieldset>
+        </div>
     </form>
     <output id="output">-</output>
     {# Table #}
+{% endblock %}
+{% block scripts %}
+    <script defer>
+        const element = document.querySelector('#state-select')
+        const choices = new Choices(element, {
+            addItems: false
+        })
+    </script>
 {% endblock %}

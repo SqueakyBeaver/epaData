@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request
+import pandas as pd
 
 from epadata.campd import CAMPDClient
 
@@ -26,3 +27,10 @@ def submit_years():
         "fragments/search/filters_for_year.html",
         facility_codes=client.get_facilities_for_year("2022"),
     )
+
+
+@bp.get("/campd/sample_data")
+def sample_data():
+    df = pd.read_csv("epadata/data/sampledata.csv")
+
+    return render_template("fragments/dataset_table.html", data=df.fillna("N/A"))

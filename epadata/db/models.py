@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
@@ -21,7 +22,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 
 class Base(DeclarativeBase):
-    type_annotation_map = {
+    type_annotation_map: ClassVar[dict[Any, Any]] = {
         list[int]: JSON,
         list[str]: JSON,
     }
@@ -50,7 +51,7 @@ class Facility(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    state: Mapped[str]  # maybe make this another table?
+    state: Mapped[str]
     county: Mapped[str]
     latitude: Mapped[str]
     longitude: Mapped[str]
@@ -67,8 +68,10 @@ class Facility(Base):
 class Unit(Base):
     __tablename__ = "unit"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    epa_id: Mapped[int]
+    internal_id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True
+    )  # The epa id is per facility, so there will be many units that have 1 as their epa id
+    id: Mapped[int]  # The epa ID
     facility_id = mapped_column(ForeignKey("facility.id", ondelete="CASCADE"))
     type: Mapped[str]
     primary_fuel: Mapped[str]
@@ -82,7 +85,7 @@ class Unit(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("facility_id", "epa_id", name="uq_facility_unit"),
+        UniqueConstraint("facility_id", "id", name="uq_facility_unit"),
     )
 
 
@@ -130,6 +133,22 @@ class AnnualRecord(Base):
         ),
         Index("idx_annual_facility_year", "facility_id", "reporting_year"),
     )
+
+
+class StateOrTerritory(Base):
+    __tablename__ = "state_or_territory"
+
+    code: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    epa_region: Mapped[int]
+
+
+class FuelType(Base):
+    __tablename__ = "fuel_type"
+
+    code: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    group_code: Mapped[int]
 
 
 if __name__ == "__main__":

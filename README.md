@@ -37,7 +37,7 @@ epadata/
 ## Frontend
 - HTML [Jinja2](https://jinja.palletsprojects.com) templates
 - [htmx v4](https://four.htmx.org/docs) for easy reactivity
-- [Tailwind CSS](https://getbootstrap.com/docs) and [daisyUI](https://daisyui.com)
+- [Boostrap v5.3](https://getbootstrap.com/docs/5.3/getting-started/introduction/)
   because I don't particularly want to write a bunch of CSS/JS for this project
 
 ## Backend

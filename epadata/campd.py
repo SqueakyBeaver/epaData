@@ -4,16 +4,18 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
+from epadata.db import DBClient
+
 
 class CAMPDClient:
     def __init__(self):
         load_dotenv()
         self.api_key = str(getenv("CAMPD_API_KEY"))
 
-        # TODO: Save some of these requests (like fuel codes) in a SQLite database so we don't have to request every time
-
         if not self.api_key:
             raise ValueError("No CAMPD_API_KEY found in environment variables or .env")
+
+        self.db_client = DBClient()
 
     def send_request(
         self,
@@ -66,7 +68,7 @@ class CAMPDClient:
         """
         return self.send_request(endpoint="facilities-mgmt/facilities")
 
-    def _get_facility_attributes_for_year(self, year: str | tuple[str]):
+    def _get_facility_attributes_for_year(self, year: str | tuple[str, str]):
         """
         Get applicable facility attributes for the given year(s).
         If `year` is a tuple, it should be in the format [start, stop],
@@ -83,7 +85,7 @@ class CAMPDClient:
         )
         return res
 
-    def get_facilities_for_year(self, year: str | tuple[str]) -> pd.DataFrame:
+    def get_facilities_for_year(self, year: str | tuple[str, str]) -> pd.DataFrame:
         """
         Get a list of facility codes and names that have data in a given year
         """
@@ -91,7 +93,7 @@ class CAMPDClient:
         facilities = pd.json_normalize(self.get_facilities())
 
         return facilities.loc[
-            facilities["facilityId"].isin(attrs["facilityId"].unique()),
+            facilities["facilityId"].isin(attrs["facilityId"].drop_duplicates()),
             ["facilityId", "facilityName"],
         ]
 

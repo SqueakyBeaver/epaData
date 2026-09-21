@@ -1,10 +1,13 @@
+from collections.abc import Sequence
 from os import getenv
 
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+from sqlalchemy import select
 
-from epadata.db import DBClient
+from epadata.db import Session
+from epadata.db.models import StateOrTerritory
 
 
 class CAMPDClient:
@@ -14,8 +17,6 @@ class CAMPDClient:
 
         if not self.api_key:
             raise ValueError("No CAMPD_API_KEY found in environment variables or .env")
-
-        self.db_client = DBClient()
 
     def send_request(
         self,
@@ -40,15 +41,26 @@ class CAMPDClient:
 
         return resp.json()["items"]
 
-    def get_state_codes(self) -> list[dict[str, str]]:
+    def get_state_codes(self) -> Sequence[StateOrTerritory]:
         """
         Get state codes that CAMPD uses.
         Returned format is an array of:
         { "stateCode": "XX", "stateName": "full state name", "epaRegion": "##" }
         """
-        return self.send_request(
-            endpoint="master-data-mgmt/state-codes",
-        )
+        with Session() as session:
+            states = session.scalars(select(StateOrTerritory)).all()
+
+            if len(states) >= 50:
+                return states
+
+        return [
+            StateOrTerritory(
+                code=i["stateCode"], name=i["stateName"], epa_region=int(i["epaRegion"])
+            )
+            for i in self.send_request(
+                endpoint="master-data-mgmt/state-codes",
+            )
+        ]
 
     def get_fuel_type_codes(self) -> list[dict[str, str]]:
         """

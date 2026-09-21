@@ -20,7 +20,6 @@
     <h1 class="col-8">Explore and search EPA CAMPD data</h1>
 {% endblock %}
 {% block content %}
-    {# Search stuff #}
     <form hx-post="{{ url_for('index.submit_form') }}"
           hx-target="#output"
           class="row g-3">
@@ -34,14 +33,15 @@
                    placeholder="Ex 2015, 2019-2022"
                    hx-post="{{ url_for('.submit_years') }}"
                    hx-trigger="input delay:500ms, keyup[key=='Enter']"
-                   hx-target="#facility-fieldset" />
+                   hx-swap="innerMorph"
+                   hx-target="#facility-select" />
         </div>
         <div class=" col-md-3">
             <label class="form-label" for="state-select">State/Territory</label>
             <select class="select" id="state-select">
                 <option disabled selected>Choose a State/Territory</option>
                 {% for code in state_codes %}
-                    <option value="{{ code.stateCode }}">{{ code.stateName }}</option>
+                    <option value="{{ code.code }}">{{ code.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -54,9 +54,9 @@
                 {% endfor %}
             </select>
         </div>
-        <div class=" col-md-3" id="facility-fieldset">
+        <div class=" col-md-3">
             <label class="form-label">Facility</label>
-            <select disabled class="select" placeholder="Facility" id="facility-select">
+            <select class="select" placeholder="Facility" id="facility-select">
                 <option value="">Please Input Years First</option>
             </select>
         </div>
@@ -73,10 +73,18 @@
 {% block scripts %}
     <script defer>
         document.addEventListener('DOMContentLoaded', function() {
-            const element = document.querySelector('#state-select')
-            const choices = new Choices(element, {
-                addItems: false
-            })
+            for (i of ["state-select", "fuel-select", "facility-select"]) {
+                const element = document.querySelector(`#${i}`)
+                const choices = new Choices(element, {
+                    addItems: false,
+                    shouldSort: false,
+                })
+                htmx.on('htmx:after:swap', function(evt) {
+                    if (evt.target === element) {
+                        choices.refresh()
+                    }
+                })
+            }
         });
     </script>
 {% endblock %}

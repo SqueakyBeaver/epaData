@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
@@ -11,7 +10,14 @@ from sqlalchemy import (
     event,
     func,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    mapped_column,
+    registry,
+    relationship,
+)
 
 
 @event.listens_for(Engine, "connect")
@@ -21,11 +27,13 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 
 
-class Base(DeclarativeBase):
-    type_annotation_map: ClassVar[dict[Any, Any]] = {
-        list[int]: JSON,
-        list[str]: JSON,
-    }
+class Base(MappedAsDataclass, DeclarativeBase):
+    registry = registry(
+        type_annotation_map={
+            list[int]: JSON,
+            list[str]: JSON,
+        }
+    )
 
 
 class Dataset(Base):
@@ -37,8 +45,8 @@ class Dataset(Base):
     reporting_years: Mapped[list[int]]
     retrieval_date: Mapped[datetime] = mapped_column(insert_default=func.now())
     source_location: Mapped[str]  # Filename or URL
-    raw_records_cnt: Mapped[int] = mapped_column(default=0)
-    approved_records_cnt: Mapped[int] = mapped_column(default=0)
+    raw_records_cnt: Mapped[int]
+    approved_records_cnt: Mapped[int]
     notes: Mapped[list[str]]
 
     annual_records: Mapped[list["AnnualRecord"]] = relationship(
@@ -49,7 +57,7 @@ class Dataset(Base):
 class Facility(Base):
     __tablename__ = "facility"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(init=False, primary_key=True)
     name: Mapped[str]
     state: Mapped[str]
     county: Mapped[str]
@@ -72,7 +80,9 @@ class Unit(Base):
         primary_key=True, autoincrement=True
     )  # The epa id is per facility, so there will be many units that have 1 as their epa id
     id: Mapped[int]  # The epa ID
-    facility_id = mapped_column(ForeignKey("facility.id", ondelete="CASCADE"))
+    facility_id: Mapped[int] = mapped_column(
+        ForeignKey("facility.id", ondelete="CASCADE")
+    )
     type: Mapped[str]
     primary_fuel: Mapped[str]
     secondary_fuel: Mapped[str | None]
@@ -84,9 +94,7 @@ class Unit(Base):
         "AnnualRecord", back_populates="unit", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (
-        UniqueConstraint("facility_id", "id", name="uq_facility_unit"),
-    )
+    __table_args__ = (UniqueConstraint("facility_id", "id", name="uq_facility_unit"),)
 
 
 class AnnualRecord(Base):
@@ -138,8 +146,9 @@ class AnnualRecord(Base):
 class StateOrTerritory(Base):
     __tablename__ = "state_or_territory"
 
-    code: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    # abbreviation of full name, more or less
+    code: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(unique=True)
     epa_region: Mapped[int]
 
 

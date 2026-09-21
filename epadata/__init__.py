@@ -2,7 +2,9 @@ import os
 
 import dotenv
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
+from epadata.db.models import Base
 from epadata.routes import blueprints
 
 
@@ -12,7 +14,8 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY=os.getenv("FLASK_SECRET_KEY"),
-        DATABASE=os.path.join(app.instance_path, "flaskr.sqlite"),
+        DB_URI="sqlite:///db.sqlite",
+        UPLOADS_PATH="./data/uploads"
     )
 
     if test_config is None:

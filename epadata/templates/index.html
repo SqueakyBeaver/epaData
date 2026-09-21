@@ -4,12 +4,13 @@
     <h1 class="mx-auto">Home</h1>
 {% endblock %}
 {% block content %}
-    <form hx-post="{{ url_for('.submit_form') }}" hx-target="next output">
-        <input type="text"
-               class="input"
-               name="content"
-               placeholder="Change the output to something" />
-        <button class="btn btn-primary">Click meeee</button>
+    <form hx-post="{{ url_for('upload.upload_dataset_file') }}"
+          hx-target="next output"
+          hx-encoding="multipart/form-data"
+          method="post">
+        <div class="input-group">
+            <label class="input-group-text" for="datasetFileUpload">Upload dataset file</label>
+            <input type="file" class="form-control" id="datasetFileUpload" />
+        </div>
     </form>
-    <output id="output">I need to eventually put a home page here</output>
 {% endblock %}

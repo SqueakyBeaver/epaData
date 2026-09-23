@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <title>{% block title %}{% endblock %} - epaData</title>
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0"
-            integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.js"
+            integrity="sha384-ESzWv77gBOAGtF3d7B8QiQ786cghRRsyhuYVVJGsrFGxwT0Dj1fLxReX9Ul6t4n9"
             crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/ext/hx-live.js"
             integrity="sha256-0zyX+q6CjumWisbwzdDF1ompiv9tWD53wJP6msNmVNE="
@@ -39,10 +39,15 @@
         <header class="row justify-content-center">
             {% block header %}{% endblock %}
         </header>
-        {% for message in get_flashed_messages() %}
-            <div class="flash">{{ message }}</div>
-        {% endfor %}
-        <div id="content" class="container">
+        <div id="flash"
+             class="alert fade"
+             data-message=""
+             data-alert_type=""
+             hx-on="flash -> data.message = message; data.alert_type = alert_type; await timeout('3s'); data.message = '';"
+             :text="data.message"
+             :class="`alert-${data.alert_type}`"
+             :.show="data.message !== ''"></div>
+        <div id="content" class="container d-grid row-gap-3">
             {% block content %}{% endblock %}
         </div>
     </div>

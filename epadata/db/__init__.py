@@ -1,5 +1,3 @@
-from os import PathLike
-
 from flask import current_app
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -16,8 +14,3 @@ Session = scoped_session(sessionmaker(engine))
 
 
 Base.metadata.create_all(engine)
-
-
-class DBClient:
-    def __init__(self, path: str | PathLike = "db.sqlite"):
-        self.Session = Session

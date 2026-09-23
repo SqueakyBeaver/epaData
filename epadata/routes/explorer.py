@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request
 import pandas as pd
+from flask import Blueprint, render_template, request
 
 from epadata.campd import CAMPDClient
 
@@ -34,3 +34,5 @@ def sample_data():
     df = pd.read_csv("epadata/data/sampledata.csv")
 
     return render_template("fragments/dataset_table.html", data=df.fillna("N/A"))
+
+# TODO: Route for getting data from CAMPD (or data that is cached in the DB if it's recent enough I guess)

@@ -10,7 +10,17 @@
           method="post">
         <div class="input-group">
             <label class="input-group-text" for="datasetFileUpload">Upload dataset file</label>
-            <input type="file" class="form-control" id="datasetFileUpload" />
+            <input type="file"
+                   class="form-control"
+                   id="datasetFileUpload"
+                   name="dataset"
+                   hx-swap="outerHTML"
+                   hx-preserve />
+            <button class="btn btn-outline-secondary" type="submit">Submit</button>
         </div>
     </form>
+    <button class="btn btn-primary"
+            hx-swap="none"
+            hx-get="{{ url_for('index.test_alert') }}">Press me to test alerts</button>
+    {# TODO: Datasets overview. #}
 {% endblock %}

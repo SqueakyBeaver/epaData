@@ -73,6 +73,7 @@
               self.formatter.${system}
               pkgs.sqlite
               pkgs.djlint
+              pkgs.jinja-lsp
             ];
         };
       }

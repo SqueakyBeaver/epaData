@@ -32,9 +32,8 @@
                    required
                    placeholder="Ex 2015, 2019-2022"
                    hx-post="{{ url_for('.submit_years') }}"
-                   hx-trigger="input delay:500ms, keyup[key=='Enter']"
-                   hx-swap="innerMorph"
-                   hx-target="#facility-select" />
+                   hx-target="#facility-select"
+                   hx-trigger="input delay:500ms, keyup[key=='Enter']" />
         </div>
         <div class=" col-md-3">
             <label class="form-label" for="state-select">State/Territory</label>
@@ -56,7 +55,11 @@
         </div>
         <div class=" col-md-3">
             <label class="form-label">Facility</label>
-            <select class="select" placeholder="Facility" id="facility-select">
+            <select class="select"
+                    disabled
+                    placeholder="Facility"
+                    id="facility-select"
+                    hx-swap="innerMorph">
                 <option value="">Please Input Years First</option>
             </select>
         </div>
@@ -80,8 +83,10 @@
                     shouldSort: false,
                 })
                 htmx.on('htmx:after:swap', function(evt) {
-                    if (evt.target === element) {
-                        choices.refresh()
+                    if (evt.detail.ctx.target === element) {
+                        htmx.live.q(element).attr.disabled = false;
+                        choices.refresh(selectFirstOption = true)
+                        choices.enable();
                     }
                 })
             }

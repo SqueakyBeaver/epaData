@@ -1,4 +1,5 @@
-from . import details, explorer, index, upload
+from . import details, explorer, index, upload, download, retrieve
+
 
 
 
@@ -7,4 +8,6 @@ blueprints = [
     explorer.bp,
     index.bp,
     upload.bp,
+    download.bp,
+    retrieve.bp
 ]

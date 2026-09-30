@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Download{% endblock %}
+{% block header %}<h1 class="mx-auto">Download Data</h1>{% endblock %}
+
+{% block content %}
+<form method="post" class="row g-2">
+  <div class="col-md-3">
+    <label class="form-label">Dataset</label>
+    <select name="dataset" class="form-select">
+      {% for key, (label, _) in (datasets or {}).items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">State</label>
+    <select name="state" class="form-select">
+      <option value="">All</option>
+      {% for s in states %}<option>{{ s }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Year</label>
+    <select name="year" class="form-select">
+      <option value="">All</option>
+      {% for y in years %}<option>{{ y }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Fuel</label>
+    <select name="fuel" class="form-select">
+      <option value="">All</option>
+      {% for f in fuels %}<option>{{ f }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Format</label>
+    <select name="format" class="form-select">
+      <option value="csv">CSV</option>
+      <option value="json">JSON</option>
+    </select>
+  </div>
+  <div class="col-md-1 d-flex align-items-end"><button class="btn btn-success">Download</button></div>
+</form>
+{% endblock %}

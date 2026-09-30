@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}EPA Retrieval{% endblock %}
+{% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
+
+{% block content %}
+<p><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
+
+<form method="post" class="row g-2 mb-4">
+  <div class="col-md-3">
+    <select name="state" class="form-select">
+      <option value="">All states</option>
+      {% for s in states %}<option>{{ s }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select name="year" class="form-select">
+      <option value="">All years</option>
+      {% for y in years %}<option>{{ y }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select name="fuel" class="form-select">
+      <option value="">All fuels</option>
+      {% for f in fuels %}<option>{{ f }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3"><button class="btn btn-success">Retrieve</button></div>
+</form>
+
+{% if result %}
+<div class="card"><div class="card-body">
+  <p><strong>Status:</strong> {{ result.status }}</p>
+  <p><strong>Records retrieved:</strong> {{ result.count }}</p>
+  <p class="mb-0"><strong>Filters used:</strong>
+    {% for k, v in result.filters.items() %}{{ k }} = {{ v or 'any' }}{{ ', ' if not loop.last }}{% endfor %}
+  </p>
+</div></div>
+{% endif %}
+{% endblock %}

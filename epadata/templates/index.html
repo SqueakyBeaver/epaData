@@ -2,7 +2,24 @@
 {% block title %}Home{% endblock %}
 {% block header %}
     <h1 class="mx-auto">Home</h1>
+    {#Home Page, working on display section as seen in section 9 of project description#}
+        <h2>Project Introduction</h2>
+            <h3>epaData: EPA Data Management and Visualization System</h3>
+                <body>
+                    <p>The specific goal of this project is to design and implement a web application that can collect, store, manage, and visualize environmental and power-sector data obtained from the U.S. Environmental Protection Agency. This Flask-based web application will support: 
+                            Retrieving selected Environmental data records from the EPA website using one or more of the following methods: the CAM API, automatically downloading CAMPD bulk files, or importing files obtained through the CAMPD Custom Data Download. 
+                            Uploading environmental data from CSV or Excel Files, first performing proper quality control methods by validating the uploaded data. 
+                            A database in SQLite to store the verified and uploaded data that enforces relationships, uniqueness, and data integrity rules when appropriate. 
+                            Data search, download, and display according to the user’s requests.</p>
+                </body>
+
+        <h2>Data Sources</h2>
+                <p>include data sources when finished</p>
+        <h2>Current Data Coverage</h2>
+                <p>include data coverage</p>
+        {#todo: update all parts of the home page}
 {% endblock %}
+
 {% block content %}
     <form hx-post="{{ url_for('upload.upload_dataset_file') }}"
           hx-target="next output"

@@ -1,39 +1,101 @@
 {% extends "base.html" %}
 {% block title %}EPA Retrieval{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/scripts/choices.min.js"
+          integrity="sha256-y2gFrdpOrzJR/lrb3l8vYsgOocKbeZmxWFRqd9HhkdY="
+          crossorigin="anonymous"></script>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css"
+        integrity="sha256-pTYPT12p21vMW/XFNnPkuRYiqtvjrFcnpgX/mmsU2gs="
+        crossorigin="anonymous" />
+  <link href="https://cdn.datatables.net/v/bs5/dt-3.0.4/b-4.0.3/cc-2.0.2/fh-5.0.0/r-4.0.3/sc-3.0.0/sl-4.0.1/datatables.min.css"
+        rel="stylesheet"
+        integrity="sha384-5hW8FGjjjijsQwVv+5nO4uXnaWdwjbNPE326ifeBWvFxlFeZFc08fyj6rT6SQkjf"
+        crossorigin="anonymous" />
+  <script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/b-4.0.3/cc-2.0.2/fh-5.0.0/r-4.0.3/sc-3.0.0/sl-4.0.1/datatables.min.js"
+          integrity="sha384-PybSzwIlnpgXDa4PnrHHzXHkojyTybdzRrG2er5tmas+IV9S2+b95r5dlslDtx3C"
+          crossorigin="anonymous"></script>
+{% endblock %}
 {% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
-
 {% block content %}
-<p><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
-
-<form method="post" class="row g-2 mb-4">
-  <div class="col-md-3">
-    <select name="state" class="form-select">
-      <option value="">All states</option>
-      {% for s in states %}<option>{{ s }}</option>{% endfor %}
-    </select>
+  <p><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
+  <form class="row g-3 align-items-end">
+    <!-- Prevents the form being submitted when a user presses enter in the years text input -->
+    <button type="submit" disabled class="d-none"></button>
+    <div class="col-md-2">
+      <label class="form-label" for="years-input">Year(s)</label>
+      <input type="text"
+             id="years-input"
+             class="form-control"
+             name="years"
+             required
+             placeholder="Ex 2015, 2019-2022"
+             hx-post="{{ url_for('.filter_facilities') }}"
+             hx-target="#facility-select"
+             hx-trigger="input delay:500ms, keyup[key=='Enter'], changed" />
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="state-select">State</label>
+      <select class="select"
+              id="state-select"
+              name="stateCode"
+              hx-post="{{ url_for('.filter_facilities') }}"
+              hx-target="#facility-select">
+        <option disabled selected>Choose a State</option>
+        {% for code in state_codes %}
+          <option value="{{ code.code }}">{{ code.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="fuel-select">Fuel Type</label>
+      <select class="select" id="fuel-select" name="unitFuelType">
+        <option disabled selected>Choose a Fuel Type</option>
+        {% for fuel in fuel_type_codes %}
+          {# For some reason fuel type has to be the full name and not the fuel code... #}
+          <option value="{{ fuel.fuelTypeDescription }}">{{ fuel.fuelTypeDescription }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="facility-select">Facility</label>
+      <select class="select"
+              disabled
+              placeholder="Facility"
+              name="facilityId"
+              id="facility-select"
+              hx-swap="innerMorph">
+        <option value="">Please Input Years First</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <button hx-post="{{ url_for('.retrieve_data') }}"
+              hx-target="#output"
+              class="btn btn-outline-primary"
+              type="submit">Search</button>
+    </div>
+  </form>
+  <div class="container-lg">
+    <output id="output"></output>
   </div>
-  <div class="col-md-3">
-    <select name="year" class="form-select">
-      <option value="">All years</option>
-      {% for y in years %}<option>{{ y }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="col-md-3">
-    <select name="fuel" class="form-select">
-      <option value="">All fuels</option>
-      {% for f in fuels %}<option>{{ f }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="col-md-3"><button class="btn btn-success">Retrieve</button></div>
-</form>
-
-{% if result %}
-<div class="card"><div class="card-body">
-  <p><strong>Status:</strong> {{ result.status }}</p>
-  <p><strong>Records retrieved:</strong> {{ result.count }}</p>
-  <p class="mb-0"><strong>Filters used:</strong>
-    {% for k, v in result.filters.items() %}{{ k }} = {{ v or 'any' }}{{ ', ' if not loop.last }}{% endfor %}
-  </p>
-</div></div>
-{% endif %}
+{% endblock %}
+{% block scripts %}
+  <script defer>
+      document.addEventListener('DOMContentLoaded', function() {
+          for (i of ["state-select", "fuel-select", "facility-select"]) {
+              const element = document.querySelector(`#${i}`)
+              const choices = new Choices(element, {
+                  addItems: false,
+                  shouldSort: false,
+              })
+              htmx.on('htmx:after:swap', function(evt) {
+                  if (evt.detail.ctx.target === element) {
+                      htmx.live.q(element).attr.disabled = false;
+                      choices.refresh(selectFirstOption = true)
+                      choices.enable();
+                  }
+              })
+          }
+      });
+  </script>
 {% endblock %}

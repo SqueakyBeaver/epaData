@@ -1,39 +1,120 @@
 {% extends "base.html" %}
 {% block title %}EPA Retrieval{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/scripts/choices.min.js"
+          integrity="sha256-y2gFrdpOrzJR/lrb3l8vYsgOocKbeZmxWFRqd9HhkdY="
+          crossorigin="anonymous"></script>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css"
+        integrity="sha256-pTYPT12p21vMW/XFNnPkuRYiqtvjrFcnpgX/mmsU2gs="
+        crossorigin="anonymous" />
+  <link href="https://cdn.datatables.net/v/bs5/dt-3.0.4/b-4.0.3/cc-2.0.2/fh-5.0.0/r-4.0.3/sc-3.0.0/sl-4.0.1/datatables.min.css"
+        rel="stylesheet"
+        integrity="sha384-5hW8FGjjjijsQwVv+5nO4uXnaWdwjbNPE326ifeBWvFxlFeZFc08fyj6rT6SQkjf"
+        crossorigin="anonymous" />
+  <script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/b-4.0.3/cc-2.0.2/fh-5.0.0/r-4.0.3/sc-3.0.0/sl-4.0.1/datatables.min.js"
+          integrity="sha384-PybSzwIlnpgXDa4PnrHHzXHkojyTybdzRrG2er5tmas+IV9S2+b95r5dlslDtx3C"
+          crossorigin="anonymous"></script>
+{% endblock %}
 {% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
-
 {% block content %}
-<p><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
-
-<form method="post" class="row g-2 mb-4">
-  <div class="col-md-3">
-    <select name="state" class="form-select">
-      <option value="">All states</option>
-      {% for s in states %}<option>{{ s }}</option>{% endfor %}
-    </select>
+  <p class="text-body-secondary mb-0"><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
+  <form class="grid g-4"
+        hx-post="{{ url_for('.retrieve_data') }}"
+        hx-target="#output">
+    <!-- Prevents the form being submitted when a user presses enter in the years text input -->
+    <button type="submit" disabled class="d-none"></button>
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="years-input">Year or year range</label>
+        <input type="text"
+               id="years-input"
+               class="form-control"
+               name="years"
+               required
+               placeholder="Ex 2015, 2019-2022" />
+        <div class="form-text">Use a year or range, such as 2015 or 2019-2022.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="state-select">State</label>
+        <select class="choices select" id="state-select" name="stateCode">
+          <option value="">Any state</option>
+          {% for state in state_codes %}
+            <option value="{{ state.code }}">{{ state.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="unit-type-select">Unit type</label>
+        <select class="choices select" id="unit-type-select" name="unitType">
+          <option value="" selected>Any unit type</option>
+          {% for unit in unit_type_codes %}
+            {# TODO Group the unit types #}
+            <option value="{{ unit.unitTypeCode }}">{{ unit.unitTypeDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="primary-fuel-select">Fuel Type</label>
+        <select class="choices select" id="primary-fuel-select" name="unitFuelType">
+          <option value="" selected>Any fuel type</option>
+          {% for fuel in fuel_type_codes %}
+            {# For some reason fuel type has to be the full name and not the fuel code... #}
+            <option value="{{ fuel.fuelTypeDescription }}">{{ fuel.fuelTypeDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="control-technology-select">Control technology</label>
+        <select class="choices select"
+                id="control-technology-select"
+                name="controlTechnology">
+          <option value="" selected>Any control technology</option>
+          {% for control in control_codes %}
+            {# TODO Control groups (params are items in group) #}
+            <option value="{{ control.controlCode }}">{{ control.controlDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="source-category-select">Source category</label>
+        <select class="choices select"
+                id="source-category-select"
+                name="sourceCategory">
+          <option value="" selected>Any source category</option>
+        </select>
+      </div>
+    </div>
+    <div class="row g-4 mb-4">
+      <div class="col-8 d-flex justify-content-center">
+        <button class="btn btn-primary px-4" type="submit">Search facilities</button>
+      </div>
+    </div>
+  </form>
+  <div class="container-lg">
+    <output id="output"></output>
   </div>
-  <div class="col-md-3">
-    <select name="year" class="form-select">
-      <option value="">All years</option>
-      {% for y in years %}<option>{{ y }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="col-md-3">
-    <select name="fuel" class="form-select">
-      <option value="">All fuels</option>
-      {% for f in fuels %}<option>{{ f }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="col-md-3"><button class="btn btn-success">Retrieve</button></div>
-</form>
-
-{% if result %}
-<div class="card"><div class="card-body">
-  <p><strong>Status:</strong> {{ result.status }}</p>
-  <p><strong>Records retrieved:</strong> {{ result.count }}</p>
-  <p class="mb-0"><strong>Filters used:</strong>
-    {% for k, v in result.filters.items() %}{{ k }} = {{ v or 'any' }}{{ ', ' if not loop.last }}{% endfor %}
-  </p>
-</div></div>
-{% endif %}
+{% endblock %}
+{% block scripts %}
+  <script defer>
+      document.addEventListener('DOMContentLoaded', function() {
+          for (let element of document.querySelectorAll('.choices')) {
+              const choices = new Choices(element, {
+                  addItems: false,
+                  shouldSort: false,
+              })
+              htmx.on('htmx:after:swap', function(evt) {
+                  if (evt.detail.ctx.target === element) {
+                      htmx.live.q(element).attr.disabled = false;
+                      choices.refresh(selectFirstOption = true)
+                      choices.enable();
+                  }
+              })
+          }
+      });
+  </script>
 {% endblock %}

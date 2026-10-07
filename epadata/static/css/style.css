@@ -1,0 +1,46 @@
+:root {
+  --choices-item-disabled-color: #3d3d3d;
+}
+
+.choices {
+  margin-bottom: unset;
+  min-width: 100px;
+}
+
+.choices[data-type*="select"] > .choices__inner {
+  display: block;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  background-color: unset;
+  background-clip: padding-box;
+  border-width: var(--bs-border-width);
+  border-color: var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+  min-height: fit-content;
+  padding: 0;
+}
+
+.choices__list--multiple .choices__item {
+  margin-top: 0;
+  margin-bottom: 0;
+  background-color: var(--bs-primary);
+  border-width: var(--bs-border-width);
+  border-color: var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+.choices__list--single {
+  padding: unset;
+}
+.choices[data-type*="select"] > .choices__inner {
+  padding: 0.375rem 0.75rem;
+}
+.choices__input {
+  margin-bottom: 0;
+  padding: 0;
+  background-color: unset;
+}

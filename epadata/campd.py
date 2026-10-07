@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import date
 from os import getenv
 
 import pandas as pd
@@ -31,6 +32,10 @@ class CAMPDClient:
         headers: dict[str, str | bytes] = {"x-api-key": self.api_key}
         if _headers:
             headers.update(_headers)
+
+        for k, v in params.copy().items():
+            if not k or not v:
+                params.pop(k)
 
         resp = requests.get(
             url=f"https://api.epa.gov/easey/{endpoint}",
@@ -71,6 +76,51 @@ class CAMPDClient:
         """
         return self.send_request(endpoint="master-data-mgmt/fuel-type-codes")
 
+    def get_program_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "programCode": "string",
+            "programDescription": "string",
+            "compParameter": "string",
+            "programGroupCode": "string",
+            "programGroupDescription": "string",
+            "ozoneIndicator": true,
+            "annualIndicator": true,
+            "emissionsUIFilter": true,
+            "allowanceUIFilter": true,
+            "complianceUIFilter": true,
+            "retiredIndicator": true,
+            "tradingEndDate": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/program-codes")
+
+    def get_unit_type_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "unitTypeCode": "string",
+            "unitTypeDescription": "string",
+            "unitTypeGroupCode": "string",
+            "unitTypeGroupDescription": "string",
+            "sortOrder": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/unit-type-codes")
+
+    def get_control_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "controlCode": "string",
+            "controlDescription": "string",
+            "controlEquipParamCode": "string",
+            "controlEquipParamDescription": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/control-codes")
+
     def get_facilities(self) -> list[dict[str, str]]:
         """
         Get facility names and codes that CAMPD has data on.
@@ -97,21 +147,59 @@ class CAMPDClient:
         )
         return res
 
-    def get_facilities_for_year(self, year: str | tuple[str, str]) -> pd.DataFrame:
+    def search_facilities(
+        self, years: str | tuple[str, str], **filters
+    ) -> pd.DataFrame:
         """
-        Get a list of facility codes and names that have data in a given year
+        Get a list of facility codes and names that fulfill the given filters
+        NOTE: the filters column names MUST be in camelCase i.e. stateCode="KY"
         """
-        attrs = pd.json_normalize(self._get_facility_attributes_for_year(year))
+        attrs = pd.json_normalize(self._get_facility_attributes_for_year(years))
         facilities = pd.json_normalize(self.get_facilities())
 
+        mask = pd.Series(True, index=facilities.index)
+
+        mask &= facilities["facilityId"].isin(attrs["facilityId"].drop_duplicates())
+
+        for column, value in filters.items():
+            mask &= facilities[column].eq(value)
+
         return facilities.loc[
-            facilities["facilityId"].isin(attrs["facilityId"].drop_duplicates()),
+            mask,
             ["facilityId", "facilityName"],
         ]
+
+    def get_facility_emissions_hourly(
+        self, facility_id: int, start_date: date, end_date: date
+    ):
+        # TODO I think he wants this information... ugh
+        # https://api.epa.gov/easey/emissions-mgmt/emissions/apportioned/hourly?stateCode=KY&unitFuelType=Coal&beginDate=2025-09-28&endDate=2025-10-31&operatingHoursOnly=true&page=1&perPage=5
+        pass
+
+    def get_facility_data(
+        self,
+        years: str,
+        facility_id: str | None,
+        state_code: str | None,
+        fuel_code: str | None,
+    ) -> pd.DataFrame:
+        resp = self.send_request(
+            "facilities-mgmt/facilities/attributes",
+            year=years,
+            facilityId=facility_id,
+            stateCode=state_code,
+            unitFuelType=fuel_code,
+            page=1,
+            perPage=100,
+        )
+
+        # TODO: Cache in database
+
+        return pd.json_normalize(resp)
 
 
 if __name__ == "__main__":
     c = CAMPDClient()
 
-    codes = c.get_facilities_for_year(("2020", "2022"))
+    codes = c.search_facilities(("2020", "2022"))
     print(codes)

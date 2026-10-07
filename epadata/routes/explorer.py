@@ -163,7 +163,7 @@ def campd():
 
     client = CAMPDClient()
     return render_template(
-        "search_campd.html",
+        "explore.html",
         state_codes=client.get_state_codes(),
         fuel_type_codes=client.get_fuel_type_codes(),
         **results,
@@ -193,9 +193,11 @@ def submit_years():
 
 
 @bp.get("/campd/sample_data")
+@bp.get("/sample_data")
 def sample_data():
     df = pd.read_csv("epadata/data/sampledata.csv")
 
     return render_template("fragments/dataset_table.html", data=df.fillna("N/A"))
+
 
 # TODO: Route for getting data from CAMPD (or data that is cached in the DB if it's recent enough I guess)

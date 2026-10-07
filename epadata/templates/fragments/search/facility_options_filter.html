@@ -1,4 +1,4 @@
-<option disabled value="">Please select a facility</option>
+<option disabled selected value="">Please select a facility</option>
 {% for facility in facility_codes.itertuples() %}
     <option value="{{ facility.facilityId }}">{{ facility.facilityName }}</option>
 {% endfor %}

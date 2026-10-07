@@ -188,7 +188,7 @@ def submit_years():
 
     return render_template(
         "fragments/search/filters_for_year.html",
-        facility_codes=client.get_facilities_for_year("2022"),
+        facility_codes=client.search_facilities(years="2022"),
     )
 
 

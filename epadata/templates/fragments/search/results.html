@@ -1,0 +1,51 @@
+
+{# Results table + sorting + pagination + download.
+   htmx swaps this into #output; a full page load includes it too. #}
+{% macro nav(href, label, css='') -%}
+<a class="{{ css }}" href="{{ href }}" hx-get="{{ href }}" hx-target="#output" hx-push-url="true">{{ label }}</a>
+{%- endmacro %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center my-3 gap-2">
+    <div>
+        <strong>{{ '{:,}'.format(total) }}</strong> result{{ '' if total == 1 else 's' }}
+        {% for k, v in args_no_sort.items() %}
+            <span class="badge text-bg-secondary ms-1">{{ k }}: {{ v }}</span>
+        {% endfor %}
+    </div>
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{{ url_for('.campd_download', **args_no_page) }}">Download CSV</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                {% if has_links %}<th>Details</th>{% endif %}
+                {% for c in columns %}
+                <th>
+                    {{ nav(url_for('.campd', sort=c, dir=('desc' if sort == c and direction == 'asc' else 'asc'), **args_no_sort),
+                           c ~ (' ▲' if sort == c and direction == 'asc' else (' ▼' if sort == c else ''))) }}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for link, values in rows %}
+            <tr>
+                {% if has_links %}<td>{% if link %}<a href="{{ link }}">View</a>{% endif %}</td>{% endif %}
+                {% for v in values %}<td>{{ '{:,.2f}'.format(v) if v is float else v }}</td>{% endfor %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ columns|length + 1 }}">No results. Try loosening a filter.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<nav>
+    <ul class="pagination">
+        <li class="page-item {{ 'disabled' if page <= 1 }}">{{ nav(url_for('.campd', page=page-1, **args_no_page), 'Prev', 'page-link') }}</li>
+        <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ pages }}</span></li>
+        <li class="page-item {{ 'disabled' if page >= pages }}">{{ nav(url_for('.campd', page=page+1, **args_no_page), 'Next', 'page-link') }}</li>
+    </ul>
+</nav>

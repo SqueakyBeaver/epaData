@@ -20,45 +20,142 @@
     <h1 class="col-8">Explore and search EPA CAMPD data</h1>
 {% endblock %}
 {% block content %}
-    <form hx-post="{{ url_for('index.submit_form') }}"
+    {#metric list reused by the range filters and the "Rank by" dropdown #}
+    {% set metrics = [("op_hours", "Operating hours"), ("gross_load", "Gross load (MWh)"),
+                      ("heat_input", "Heat input (MMBtu)"), ("co2", "CO₂ (short tons)"),
+                      ("so2", "SO₂ (short tons)"), ("nox", "NOx (short tons)")] %}
+
+    {# hx-get (not hx-post) so the filters become URL parameters.
+       NEW: hx-push-url puts those parameters in the address bar. #}
+    <form hx-get="{{ url_for('.campd') }}"
           hx-target="#output"
+          hx-push-url="true"
           class="row g-3">
         <div class=" col-md-3">
             <label class="form-label" for="years-input">Year(s)</label>
+            {# CHANGED: removed `required`, added name-preserving value, and hx-push-url="false"
+               so typing here does not add history entries #}
             <input type="text"
                    id="years-input"
                    class="form-control"
                    name="years"
-                   required
+                   value="{{ request.args.get('years', '') }}"
                    placeholder="Ex 2015, 2019-2022"
                    hx-post="{{ url_for('.submit_years') }}"
                    hx-trigger="input delay:500ms, keyup[key=='Enter']"
                    hx-swap="innerMorph"
+                   hx-push-url="false"
                    hx-target="#facility-select" />
         </div>
         <div class=" col-md-3">
             <label class="form-label" for="state-select">State/Territory</label>
-            <select class="select" id="state-select">
-                <option disabled selected>Choose a State/Territory</option>
+            {# CHANGED: added name="state" (selects without a name are not submitted) #}
+            <select class="select" id="state-select" name="state">
+                <option disabled {{ 'selected' if not request.args.get('state') }}>Choose a State/Territory</option>
                 {% for code in state_codes %}
-                    <option value="{{ code.code }}">{{ code.name }}</option>
+                    <option value="{{ code.code }}" {{ 'selected' if request.args.get('state') == code.code }}>{{ code.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class=" col-md-3">
-            <label class="form-label" for="fuel-select">Fuel Type</label>
-            <select class="select" id="fuel-select">
-                <option disabled selected>Choose a Fuel Type</option>
+            <label class="form-label" for="fuel-select">Primary Fuel</label>
+            {# CHANGED: name="primary_fuel"; option value is now the fuel NAME (e.g. Coal) because
+               the data stores fuel as text and we match with "contains" #}
+            <select class="select" id="fuel-select" name="primary_fuel">
+                <option disabled {{ 'selected' if not request.args.get('primary_fuel') }}>Choose a Fuel Type</option>
                 {% for fuel in fuel_type_codes %}
-                    <option value="{{ fuel.fuelTypeCode }}">{{ fuel.fuelTypeDescription }}</option>
+                    <option value="{{ fuel.fuelTypeDescription }}"
+                            {{ 'selected' if request.args.get('primary_fuel', '')|lower == fuel.fuelTypeDescription|lower }}>{{ fuel.fuelTypeDescription }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class=" col-md-3">
             <label class="form-label">Facility</label>
-            <select class="select" placeholder="Facility" id="facility-select">
+            {# CHANGED: name="facility_id" (assumes the options from filters_for_year.html use the facility ID as value) #}
+            <select class="select" placeholder="Facility" id="facility-select" name="facility_id">
                 <option value="">Please Input Years First</option>
             </select>
+        </div>
+
+        {# NEW: remaining basic-search fields #}
+        {% for name, label in [("facility_name", "Facility name"), ("unit_id", "Unit ID(s)"),
+                               ("county", "County"), ("unit_type", "Unit type")] %}
+            <div class="col-md-3">
+                <label class="form-label" for="f-{{ name }}">{{ label }}</label>
+                <input type="text" class="form-control" id="f-{{ name }}" name="{{ name }}"
+                       value="{{ request.args.get(name, '') }}" />
+            </div>
+        {% endfor %}
+
+        {# NEW: collapsible advanced section #}
+        <div class="col-12">
+            <a data-bs-toggle="collapse" href="#more-filters" role="button">Controls, ranges and ranking &#9662;</a>
+        </div>
+        <div class="collapse col-12" id="more-filters">
+            <div class="row g-3">
+                {% for name, label in [("secondary_fuel", "Secondary fuel"), ("so2_control", "SO₂ control"),
+                                       ("nox_control", "NOx control"), ("pm_control", "PM control")] %}
+                    <div class="col-md-3">
+                        <label class="form-label" for="f-{{ name }}">{{ label }}</label>
+                        <input type="text" class="form-control" id="f-{{ name }}" name="{{ name }}"
+                               value="{{ request.args.get(name, '') }}" />
+                    </div>
+                {% endfor %}
+
+                {% for key, label in metrics %}
+                    <div class="col-md-4">
+                        <label class="form-label">{{ label }}</label>
+                        <div class="input-group">
+                            <input type="number" step="any" class="form-control" name="{{ key }}_min"
+                                   placeholder="min" value="{{ request.args.get(key ~ '_min', '') }}" />
+                            <input type="number" step="any" class="form-control" name="{{ key }}_max"
+                                   placeholder="max" value="{{ request.args.get(key ~ '_max', '') }}" />
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div class="col-md-3">
+                    <label class="form-label" for="rank-by">Rank by</label>
+                    <select class="form-select" id="rank-by" name="rank_by">
+                        <option value="">No ranking</option>
+                        {% for key, label in metrics %}
+                            <option value="{{ key }}" {{ 'selected' if request.args.get('rank_by') == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="rank-dir">Order</label>
+                    <select class="form-select" id="rank-dir" name="rank_dir">
+                        <option value="desc">Top (highest)</option>
+                        <option value="asc" {{ 'selected' if request.args.get('rank_dir') == 'asc' }}>Bottom (lowest)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="top-n">How many (N)</label>
+                    <input type="number" min="1" class="form-control" id="top-n" name="top"
+                           value="{{ request.args.get('top', '') }}" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="level">Rank</label>
+                    <select class="form-select" id="level" name="level">
+                        <option value="">Units</option>
+                        <option value="facility" {{ 'selected' if request.args.get('level') == 'facility' }}>Facilities (units added together)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="group">Group</label>
+                    <select class="form-select" id="group" name="group">
+                        <option value="">Overall</option>
+                        <option value="state" {{ 'selected' if request.args.get('group') == 'state' }}>Within each state</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {# NEW: the form had no submit button #}
+        <div class="col-12">
+            <button type="submit" class="btn btn-success">Search</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('.campd') }}">Reset</a>
         </div>
     </form>
     <hr />
@@ -67,7 +164,10 @@
                 class="btn btn-primary"
                 hx-get="{{ url_for('.sample_data') }}"
                 hx-target="#output">Press me for sample data</button>
-        <div id="output"></div>
+        {# CHANGED: on a full page load (e.g. a shared URL) the results are already filled in #}
+        <div id="output">
+            {% if total is defined %}{% include "fragments/search/results.html" %}{% endif %}
+        </div>
     </div>
 {% endblock %}
 {% block scripts %}

@@ -13,6 +13,8 @@ def index():
         "retrieve.html",
         state_codes=client.get_state_codes(),
         fuel_type_codes=client.get_fuel_type_codes(),
+        unit_type_codes=client.get_unit_type_codes(),
+        control_codes=client.get_control_codes(),
     )
 
 
@@ -22,7 +24,7 @@ def filter_facilities():
 
     return render_template(
         "fragments/search/facility_options_filter.html",
-        facility_codes=client.get_filtered_facilities(**request.form),
+        facility_codes=client.search_facilities(**request.form),
     )
 
 

@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from datetime import date
 from os import getenv
-from typing import Optional
 
 import pandas as pd
 import requests
@@ -77,6 +76,51 @@ class CAMPDClient:
         """
         return self.send_request(endpoint="master-data-mgmt/fuel-type-codes")
 
+    def get_program_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "programCode": "string",
+            "programDescription": "string",
+            "compParameter": "string",
+            "programGroupCode": "string",
+            "programGroupDescription": "string",
+            "ozoneIndicator": true,
+            "annualIndicator": true,
+            "emissionsUIFilter": true,
+            "allowanceUIFilter": true,
+            "complianceUIFilter": true,
+            "retiredIndicator": true,
+            "tradingEndDate": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/program-codes")
+
+    def get_unit_type_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "unitTypeCode": "string",
+            "unitTypeDescription": "string",
+            "unitTypeGroupCode": "string",
+            "unitTypeGroupDescription": "string",
+            "sortOrder": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/unit-type-codes")
+
+    def get_control_codes(self) -> list[dict[str, str]]:
+        """
+        Schema:
+        {
+            "controlCode": "string",
+            "controlDescription": "string",
+            "controlEquipParamCode": "string",
+            "controlEquipParamDescription": "string"
+        }
+        """
+        return self.send_request(endpoint="master-data-mgmt/control-codes")
+
     def get_facilities(self) -> list[dict[str, str]]:
         """
         Get facility names and codes that CAMPD has data on.
@@ -103,7 +147,7 @@ class CAMPDClient:
         )
         return res
 
-    def get_filtered_facilities(
+    def search_facilities(
         self, years: str | tuple[str, str], **filters
     ) -> pd.DataFrame:
         """
@@ -115,7 +159,7 @@ class CAMPDClient:
 
         mask = pd.Series(True, index=facilities.index)
 
-        mask &= facilities["facilityId"].isin(attrs["facilityId"]).drop_duplicates()
+        mask &= facilities["facilityId"].isin(attrs["facilityId"].drop_duplicates())
 
         for column, value in filters.items():
             mask &= facilities[column].eq(value)
@@ -157,5 +201,5 @@ class CAMPDClient:
 if __name__ == "__main__":
     c = CAMPDClient()
 
-    codes = c.get_filtered_facilities(("2020", "2022"))
+    codes = c.search_facilities(("2020", "2022"))
     print(codes)

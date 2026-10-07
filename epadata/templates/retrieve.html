@@ -18,61 +18,81 @@
 {% endblock %}
 {% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
 {% block content %}
-  <p><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
-  <form class="row g-3 align-items-end">
+  <p class="text-body-secondary mb-0"><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
+  <form class="grid g-4"
+        hx-post="{{ url_for('.retrieve_data') }}"
+        hx-target="#output">
     <!-- Prevents the form being submitted when a user presses enter in the years text input -->
     <button type="submit" disabled class="d-none"></button>
-    <div class="col-md-2">
-      <label class="form-label" for="years-input">Year(s)</label>
-      <input type="text"
-             id="years-input"
-             class="form-control"
-             name="years"
-             required
-             placeholder="Ex 2015, 2019-2022"
-             hx-post="{{ url_for('.filter_facilities') }}"
-             hx-target="#facility-select"
-             hx-trigger="input delay:500ms, keyup[key=='Enter'], changed" />
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="years-input">Year or year range</label>
+        <input type="text"
+               id="years-input"
+               class="form-control"
+               name="years"
+               required
+               placeholder="Ex 2015, 2019-2022" />
+        <div class="form-text">Use a year or range, such as 2015 or 2019-2022.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="state-select">State</label>
+        <select class="choices select" id="state-select" name="stateCode">
+          <option value="">Any state</option>
+          {% for state in state_codes %}
+            <option value="{{ state.code }}">{{ state.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
-    <div class="col-md-2">
-      <label class="form-label" for="state-select">State</label>
-      <select class="select"
-              id="state-select"
-              name="stateCode"
-              hx-post="{{ url_for('.filter_facilities') }}"
-              hx-target="#facility-select">
-        <option disabled selected>Choose a State</option>
-        {% for code in state_codes %}
-          <option value="{{ code.code }}">{{ code.name }}</option>
-        {% endfor %}
-      </select>
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="unit-type-select">Unit type</label>
+        <select class="choices select" id="unit-type-select" name="unitType">
+          <option value="" selected>Any unit type</option>
+          {% for unit in unit_type_codes %}
+            {# TODO Group the unit types #}
+            <option value="{{ unit.unitTypeCode }}">{{ unit.unitTypeDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="primary-fuel-select">Fuel Type</label>
+        <select class="choices select" id="primary-fuel-select" name="unitFuelType">
+          <option value="" selected>Any fuel type</option>
+          {% for fuel in fuel_type_codes %}
+            {# For some reason fuel type has to be the full name and not the fuel code... #}
+            <option value="{{ fuel.fuelTypeDescription }}">{{ fuel.fuelTypeDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
-    <div class="col-md-2">
-      <label class="form-label" for="fuel-select">Fuel Type</label>
-      <select class="select" id="fuel-select" name="unitFuelType">
-        <option disabled selected>Choose a Fuel Type</option>
-        {% for fuel in fuel_type_codes %}
-          {# For some reason fuel type has to be the full name and not the fuel code... #}
-          <option value="{{ fuel.fuelTypeDescription }}">{{ fuel.fuelTypeDescription }}</option>
-        {% endfor %}
-      </select>
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="control-technology-select">Control technology</label>
+        <select class="choices select"
+                id="control-technology-select"
+                name="controlTechnology">
+          <option value="" selected>Any control technology</option>
+          {% for control in control_codes %}
+            {# TODO Control groups (params are items in group) #}
+            <option value="{{ control.controlCode }}">{{ control.controlDescription }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="source-category-select">Source category</label>
+        <select class="choices select"
+                id="source-category-select"
+                name="sourceCategory">
+          <option value="" selected>Any source category</option>
+        </select>
+      </div>
     </div>
-    <div class="col-md-4">
-      <label class="form-label" for="facility-select">Facility</label>
-      <select class="select"
-              disabled
-              placeholder="Facility"
-              name="facilityId"
-              id="facility-select"
-              hx-swap="innerMorph">
-        <option value="">Please Input Years First</option>
-      </select>
-    </div>
-    <div class="col-md-1">
-      <button hx-post="{{ url_for('.retrieve_data') }}"
-              hx-target="#output"
-              class="btn btn-outline-primary"
-              type="submit">Search</button>
+    <div class="row g-4 mb-4">
+      <div class="col-8 d-flex justify-content-center">
+        <button class="btn btn-primary px-4" type="submit">Search facilities</button>
+      </div>
     </div>
   </form>
   <div class="container-lg">
@@ -82,8 +102,7 @@
 {% block scripts %}
   <script defer>
       document.addEventListener('DOMContentLoaded', function() {
-          for (i of ["state-select", "fuel-select", "facility-select"]) {
-              const element = document.querySelector(`#${i}`)
+          for (let element of document.querySelectorAll('.choices')) {
               const choices = new Choices(element, {
                   addItems: false,
                   shouldSort: false,

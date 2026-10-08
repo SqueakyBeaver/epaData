@@ -68,6 +68,7 @@
               pandas
               numpy
               requests
+              pydantic
             ])
             ++ [
               self.formatter.${system}

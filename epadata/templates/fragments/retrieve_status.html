@@ -1,0 +1,100 @@
+{# Shown inside <output id="output"> on the EPA Retrieval page after the user presses
+   "Search facilities". The route (retrieve_data) passes in ONE of these:
+     error   - text to show when nothing could be retrieved
+     summary - dict of counts returned by import_annual_data()
+   plus, on success: preview (rows read back from the database), years, filters. #}
+{% if error %}
+    <div class="alert alert-danger my-3">{{ error }}</div>
+{% else %}
+    <div class="card my-3">
+        <div class="card-body">
+            {% if summary.raw == 0 %}
+                {# The EPA answered, but had nothing for these filters. Nothing was saved. #}
+                <h2 class="h5">Retrieval finished: the EPA returned no records</h2>
+                <p class="mb-0">Nothing was saved. Try different years or filters.</p>
+            {% else %}
+                {# CHANGED: the headline now reflects what actually happened. #}
+                {% if summary.accepted == 0 and summary.rejected == 0 %}
+                    <h2 class="h5">Retrieval complete: nothing new to save</h2>
+                {% elif summary.accepted == 0 %}
+                    <h2 class="h5">Retrieval finished: no records could be saved</h2>
+                {% else %}
+                    <h2 class="h5">Retrieval complete</h2>
+                {% endif %}
+                <p class="mb-2 text-body-secondary">
+                    Saved as dataset <strong>{{ summary.dataset_name }}</strong>
+                </p>
+                <ul class="list-unstyled mb-2">
+                    {# NEW: the user-selected filters, echoed back (the assignment asks for them) #}
+                    <li>Filters used:
+                        years {{ years|join(', ') }}
+                        {% if filters.state_code %}&middot; state {{ filters.state_code }}{% endif %}
+                        {% if filters.facility_id %}&middot; facility {{ filters.facility_id }}{% endif %}
+                        {% if filters.fuel_code %}&middot; fuel {{ filters.fuel_code }}{% endif %}
+                    </li>
+                    {# Every record received lands in exactly one of the next three lines:
+                       received = saved + skipped + rejected #}
+                    <li>Records received from the EPA: <strong>{{ '{:,}'.format(summary.raw) }}</strong></li>
+                    <li>Records saved: <strong>{{ '{:,}'.format(summary.accepted) }}</strong>
+                        ({{ '{:,}'.format(summary.records_inserted or 0) }} first-time,
+                        {{ '{:,}'.format(summary.new_versions or 0) }} new versions of existing records)</li>
+                    <li>Skipped, identical to data already stored: <strong>{{ '{:,}'.format(summary.skipped_identical or 0) }}</strong></li>
+                    <li>Records rejected: <strong>{{ '{:,}'.format(summary.rejected) }}</strong></li>
+                    <li>New facilities: {{ summary.facilities_added or 0 }} &middot; New units: {{ summary.units_added or 0 }}</li>
+                </ul>
+
+                {# Existing records that came back with DIFFERENT values (kept as new versions). #}
+                {% if summary.new_versions %}
+                    <details class="mb-2">
+                        <summary>{{ summary.new_versions }} existing records came back with different values (kept as new versions)</summary>
+                        <ul class="mb-0">
+                            {% for r in summary.version_notes[:10] %}<li>{{ r }}</li>{% endfor %}
+                            {# NEW: say so when the list is cut short, instead of hiding the rest #}
+                            {% if summary.new_versions > 10 %}
+                                <li class="text-body-secondary">Showing the first 10 of {{ summary.new_versions }}. Up to 50 are saved in the dataset's notes.</li>
+                            {% endif %}
+                        </ul>
+                    </details>
+                {% endif %}
+
+                {# Rows the database or the importer refused, with the reason for each. #}
+                {% if summary.rejected %}
+                    <details class="mb-2">
+                        <summary>Why were {{ summary.rejected }} rejected?</summary>
+                        <ul class="mb-0">
+                            {% for r in summary.rejects[:10] %}<li>{{ r }}</li>{% endfor %}
+                            {% if summary.rejected > 10 %}
+                                <li class="text-body-secondary">Showing the first 10 of {{ summary.rejected }}. Up to 50 are saved in the dataset's notes.</li>
+                            {% endif %}
+                        </ul>
+                    </details>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {# Read back FROM THE DATABASE, so this proves the data was really stored.
+       Empty when nothing was saved (for example, everything was skipped). #}
+    {% if preview %}
+        <p class="text-body-secondary mb-1">Preview: first {{ preview|length }} records saved by this retrieval, read back from the database.</p>
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <thead>
+                    {# CHANGED: units added to the column headings #}
+                    <tr><th>Facility</th><th>State</th><th>Unit</th><th>Primary fuel</th><th>Year</th>
+                        <th class="text-end">Op. hours</th><th class="text-end">Heat input (MMBtu)</th>
+                        <th class="text-end">CO₂ (tons)</th><th class="text-end">SO₂ (tons)</th><th class="text-end">NOx (tons)</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in preview %}
+                        <tr>
+                            <td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] or '' }}</td><td>{{ r[4] }}</td>
+                            {# A blank measurement stays blank; it is never shown as 0. #}
+                            {% for v in r[5:] %}<td class="text-end">{{ '{:,.2f}'.format(v) if v is not none else '' }}</td>{% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endif %}

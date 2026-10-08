@@ -44,3 +44,6 @@
   padding: 0;
   background-color: unset;
 }
+
+/* trying to fix the whole page stretching sideways*/
+#content > * { min-width: 0;}

@@ -44,6 +44,9 @@ class CAMPDClient:
             stream=True,
         )
 
+        if not resp.ok:
+            raise RuntimeError(f"CAMPD request failed ({resp.status_code}): {resp.text[:300]}")
+
         return resp.json()["items"]
 
     def get_state_codes(self) -> Sequence[StateOrTerritory]:
@@ -183,6 +186,14 @@ class CAMPDClient:
         state_code: str | None,
         fuel_code: str | None,
     ) -> pd.DataFrame:
+        expanded = set()
+        for part in str(years).replace(" ", "").split(","):
+            start, _, end = part.partition("-")
+            if start.isdigit() and end.isdigit():
+                expanded.update(range(int(start), int(end) + 1))
+            elif start.isdigit():
+                expanded.add(int(start))
+        years = "|".join(str(y) for y in sorted(expanded))
         resp = self.send_request(
             "facilities-mgmt/facilities/attributes",
             year=years,

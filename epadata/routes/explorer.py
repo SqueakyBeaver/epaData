@@ -184,11 +184,25 @@ def campd_download():
 def submit_years():
     client = CAMPDClient()
 
-    print(request.args)
+    # read what the user typed. A POST sends its fields in request.form,
+    # not request.args (which is why the old print(request.args) showed nothing).
+    years = parse_years(request.form.get("years", ""))   # "2019-2022">>> [2019, 2020, 2021, 2022]
+
+    #  nothing usable typed yet (empty box, or half-typed like "2019-"), so give
+    # back an empty list instead of calling the API and crashing.
+    if not years:
+        return render_template(
+            "fragments/search/filters_for_year.html",
+            facility_codes=pd.DataFrame(columns=["facilityId", "facilityName"]),
+        )
+
+    # the EPA API wants several years joined with "|", e.g. "2019|2020|2021".
+    # Previously this was hardcoded to "2022".
+    year_param = "|".join(str(y) for y in years)
 
     return render_template(
         "fragments/search/filters_for_year.html",
-        facility_codes=client.search_facilities(years="2022"),
+        facility_codes=client.search_facilities(years=year_param),
     )
 
 

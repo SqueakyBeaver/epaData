@@ -1,18 +1,38 @@
+{% block head %}
+    <link href="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-3.1.3/b-4.1.2/cr-3.1.2/cc-2.1.2/date-2.1.2/fc-6.1.1/fh-5.1.2/r-4.1.1/rg-2.1.1/rr-2.1.1/sc-3.1.1/sb-2.1.1/sl-4.1.1/datatables.min.css"
+          rel="stylesheet"
+          integrity="sha384-+nmp7h7FW6yeiPHSFKuhTS5YBX5eChgOE7HCe7Zv8JXCskWJGhj7Z15u0lJsptIu"
+          crossorigin="anonymous" />
+    <script src="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-3.1.3/b-4.1.2/cr-3.1.2/cc-2.1.2/date-2.1.2/fc-6.1.1/fh-5.1.2/r-4.1.1/rg-2.1.1/rr-2.1.1/sc-3.1.1/sb-2.1.1/sl-4.1.1/datatables.min.js"
+            integrity="sha384-3FtOXzvGEYlanNkoCVA3VAWRunDIY97nGsHAoupVS3ECK4fTOJzxYOgQQKNJFtqm"
+            crossorigin="anonymous"></script>
+{% endblock %}
 {# Results table, swapped into #output by htmx. Used by the explorer's "sample data"
-   button and by the old EPA retrieval. `data` is a pandas DataFrame. #}
-
+button and by the old EPA retrieval. `data` is a pandas DataFrame. #}
 {# NEW: columns that must stay visible when the screen is narrow. Both spellings are
    listed because the CSV uses "Facility Name" and the EPA API uses "facilityName". #}
-{% set key_cols = ['Facility Name', 'facilityName', 'State', 'stateCode', 'Facility ID', 'facilityId',
-                   'Unit ID', 'unitId', 'Year', 'year'] %}
+{% set key_cols = [
+    "Facility Name",
+    "facilityName",
+    "State",
+    "stateCode",
+    "Facility ID",
+    "facilityId",
+    "Unit ID",
+    "unitId",
+    "Year",
+    "year"
+] %}
 {% set key_idx = [] %}
 {% for column in data.columns %}
-    {% if column in key_cols %}{% set _ = key_idx.append(loop.index0) %}{% endif %}
+    {% if column in key_cols %}
+        {% set _ = key_idx.append(loop.index0) %}
+    {% endif %}
 {% endfor %}
-
 {# removed data-page-length (the script below sets it) and added w-100 #}
 {# Jinja now fills this attribute instead of sitting inside the script #}
-<table id="data-table" class="table table-striped table-bordered nowrap w-100"
+<table id="data-table"
+       class="table table-striped table-bordered nowrap w-100"
        data-key-cols='{{ key_idx|tojson }}'>
     <thead>
         <tr>
@@ -21,29 +41,76 @@
             {% endfor %}
         </tr>
     </thead>
-    <tbody>
-        {% for row in data.itertuples(index=False) %}
-            <tr>
-                {% for item in row %}
-                    <td>{{ item }}</td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-    </tbody>
 </table>
 <script>
-    //  used to make one tall and too wide box, hopefully this will give pages, and fit the table to screen
-    const keyCols = JSON.parse(document.querySelector('#data-table').dataset.keyCols);
+    var tableEl = document.querySelector('#data-table');
 
-    new DataTable('#data-table', {
-        paging: true,                  // split the rows into pages
-        pageLength: 25,                // rows per page
-        lengthMenu: [10, 25, 50, 100], // choices in the "Show N entries" box
-        responsive: true,              // hide columns that do not fit; the + button on a row shows them
-        order: [],                     // keep the order the data arrived in
-        columnDefs: [
-            // the identifying columns are the LAST to be hidden
-            { responsivePriority: 1, targets: keyCols },
-        ],
+    // Destroy existing instance to prevent duplicate controls
+    if (typeof DataTable !== 'undefined' && DataTable.isDataTable(tableEl)) {
+        var existingApi = DataTable.get ? DataTable.get(tableEl) : new DataTable(tableEl);
+        if (existingApi) existingApi.destroy();
+    }
+
+    var keyCols = JSON.parse(tableEl.dataset.keyCols || "[]");
+
+    new DataTable(tableEl, {
+        paging: true,
+        pageLength: 25,
+        lengthMenu: [10, 25, 50, 100],
+        responsive: true,
+        order: [],
+        scrollCollapse: true,
+        scrollX: true,
+        scroller: true,
+        scrollY: 300,
+        autoWidth: false,
+        columnControl: [{
+            target: 0,
+            content: ['orderStatus']
+        }, {
+            target: 1,
+            content: ['search']
+        }],
+        columnDefs: [{
+            responsivePriority: 1,
+            targets: keyCols
+        }],
+        layout: {
+            topStart: {
+                buttons: [
+                    'pageLength', {
+                        extend: 'colvis',
+                        collectionLayout: 'two-column',
+                        text: 'Column Visibility',
+                        align: 'container',
+                        spawn:'container'
+                    }, {
+                        extend: 'collection',
+                        text: 'Export Filtered Data',
+                        buttons: ['excel', 'csv']
+                    }
+                ]
+            }
+        },
+        // Use this way to add data as it is MUCH faster
+        data: [
+            {% for row in data.itertuples(index=False) %}
+            [
+                {% for item in row %}
+                "{{ item }}",
+                {% endfor %}
+            ],
+            {% endfor %}
+        ]
     });
 </script>
+<style>
+    .dataTables_scrollHead th,
+    .dataTables_scrollBody td {
+        white-space: nowrap !important;
+    }
+
+    div.dt-button-collection.two-column {
+        width: auto !important;
+    }
+</style>

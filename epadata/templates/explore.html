@@ -1,10 +1,114 @@
 {% extends "base.html" %}
-{% block content %}
-    <div class="container-lg">
-        <button type="button"
-                class="btn btn-primary"
-                hx-get="{{ url_for('.sample_data') }}"
-                hx-target="#output">Press me for sample data</button>
+{% block title %}Dataset Explorer{% endblock %}
+{% block header %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100">
+        <div>
+            <h1 class="mb-1">Dataset Explorer</h1>
+            <p class="text-body-secondary mb-0">Browse saved datasets or select a card to view detailed records.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('upload.upload_page') }}">Upload dataset</a>
     </div>
-    <div id="output"></div>
+{% endblock %}
+{% block content %}
+    <section class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0">Saved Datasets</h2>
+                <span class="badge text-bg-primary">{{ dataset_rows|length }} dataset(s) available</span>
+            </div>
+            {% if dataset_rows %}
+                <!-- Carousel Container -->
+                <div id="datasetCarousel" class="carousel slide" data-bs-ride="false">
+                    <div class="carousel-inner">
+                        {% for chunk in dataset_rows|batch(3) %}
+                            <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                <div class="row g-3 px-md-5">
+                                    {% for item in chunk %}
+                                        {% set dataset = item.dataset %}
+                                        <div class="col-12 col-md-4">
+                                            <div class="card h-100 shadow-sm border-primary-subtle dataset-card hover-shadow transition">
+                                                <div class="card-body d-flex flex-column justify-content-between">
+                                                    <div>
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <span class="badge text-bg-secondary">{{ dataset.data_source }}</span>
+                                                            <small class="text-body-secondary">
+                                                                {{ dataset.retrieval_date.strftime("%Y-%m-%d") if dataset.retrieval_date else '—' }}
+                                                            </small>
+                                                        </div>
+                                                        <h3 class="h5 card-title text-truncate mb-3" title="{{ dataset.name }}">
+                                                            <a href="{{ url_for('explore.dataset_detail', dataset_id=dataset.id) }}"
+                                                               class="text-decoration-none stretched-link text-dark">
+                                                                {{ dataset.name }}
+                                                            </a>
+                                                        </h3>
+                                                        <ul class="list-unstyled small text-body-secondary mb-4">
+                                                            <li class="mb-1">
+                                                                <strong>Records:</strong> {{ item.record_count }}
+                                                                ({{ dataset.accepted_records_cnt }} accepted)
+                                                            </li>
+                                                            <li class="mb-1">
+                                                                <strong>Facilities:</strong> {{ item.facility_count }}
+                                                            </li>
+                                                            <li>
+                                                                <strong>Years:</strong> {{ dataset.reporting_years|join(", ") if dataset.reporting_years else '—' }}
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                                        <span class="btn btn-sm btn-outline-primary">View Records</span>
+                                                        <a href="{{ url_for('explore.dataset_download', dataset_id=dataset.id) }}"
+                                                           class="btn btn-sm btn-outline-secondary position-relative z-2"
+                                                           onclick="event.stopPropagation();">Download as CSV</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if dataset_rows|length > 3 %}
+                        <button class="carousel-control-prev"
+                                type="button"
+                                data-bs-target="#datasetCarousel"
+                                data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon bg-dark rounded-circle p-2"
+                                  aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next"
+                                type="button"
+                                data-bs-target="#datasetCarousel"
+                                data-bs-slide="next">
+                            <span class="carousel-control-next-icon bg-dark rounded-circle p-2"
+                                  aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <h3 class="h5">No datasets found</h3>
+                    <p class="text-body-secondary">Upload a dataset to get started.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+    <style>
+        .dataset-card {
+            transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .dataset-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .carousel-control-prev-icon,
+        .carousel-control-next-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+    </style>
 {% endblock %}

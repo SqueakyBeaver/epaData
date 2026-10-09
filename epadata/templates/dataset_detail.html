@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ dataset.name }} - Details{% endblock %}
+{% block header %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100">
+        <div>
+            <h1 class="mb-1">{{ dataset.name }}</h1>
+            <p class="text-body-secondary mb-0">Source: {{ dataset.data_source }} | {{ total }} total record(s)</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('explore.dataset_explorer') }}"
+               class="btn btn-outline-secondary">Back to Datasets</a>
+            <a href="{{ url_for('explore.dataset_download', dataset_id=dataset.id) }}"
+               class="btn btn-outline-primary">Download Whole Dataset</a>
+        </div>
+    </div>
+{% endblock %}
+{% block content %}
+    <section class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                {% include "fragments/dataset_table.html" %}
+            </div>
+        </div>
+    </section>
+{% endblock %}

@@ -1,8 +1,9 @@
-from epadata import app
+from epadata import create_app, globals
 
 
 def main():
-    app.run(debug=True)
+    create_app()
+    globals.app.run(debug=True)
 
 
 if __name__ == "__main__":

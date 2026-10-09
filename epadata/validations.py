@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Self
@@ -103,6 +104,12 @@ class FacilityInfoRecordModel(BaseModel):
         """Ensures state codes are standardized uppercase."""
         return v.upper()
 
+    @field_validator("unit_id", mode="before")
+    @classmethod
+    def normalize_unit_id(cls, value: Any) -> Any:
+        """CSV readers may infer numeric-looking EPA unit IDs as integers."""
+        return None if value is None else str(value).strip()
+
     @field_validator("*", mode="before")
     @classmethod
     def sanitize_nan_and_empty(cls, value: Any) -> Any:
@@ -114,8 +121,21 @@ class FacilityInfoRecordModel(BaseModel):
 
     @classmethod
     def validate_from_file(
-        cls, file_path: str
+        cls, file_path: str, column_mapping: dict[str, str] | None = None
     ) -> tuple[list[Self], list[Any]]:
+        prepared = cls.prepare_file(file_path, column_mapping)
+        return prepared["valid_records"], prepared["invalid_records"]
+
+    @classmethod
+    def prepare_file(
+        cls, file_path: str, column_mapping: dict[str, str] | None = None
+    ) -> dict[str, Any]:
+        """Read a file, apply a source-column mapping, and validate every row.
+
+        column_mapping maps uploaded column names to the model aliases used
+        by the EPA schema. Unknown columns are deliberately retained in the
+        preview so the upload page can let a user map them or ignore them.
+        """
         ext = Path(file_path).suffix.lower()
 
         df: pd.DataFrame
@@ -135,33 +155,76 @@ class FacilityInfoRecordModel(BaseModel):
                 "An error occured while parsing the file. Ensure it is formatted correctly."
             )
 
-        # Replace NaN values with None so Pydantic handles optional fields correctly
+        columns = [str(column) for column in df.columns]
+        df.columns = columns
+        aliases = {
+            field.alias or name: name for name, field in cls.model_fields.items()
+        }
+
+        def normalized(value: str) -> str:
+            return re.sub(r"[^a-z0-9]", "", value.lower())
+
+        normalized_aliases = {normalized(alias): alias for alias in aliases}
+        if column_mapping is None:
+            column_mapping = {
+                column: normalized_aliases[normalized(column)]
+                for column in columns
+                if normalized(column) in normalized_aliases
+            }
+        else:
+            column_mapping = {
+                source: target
+                for source, target in column_mapping.items()
+                if source in columns and target in aliases
+            }
+
+        unmapped_columns = [
+            column for column in columns if column not in column_mapping
+        ]
+        # Replace NaN values with None so Pydantic handles optional fields correctly.
         records = df.where(pd.notnull(df), None).to_dict(orient="records")
+        preview_records = json.loads(
+            df.head(100).to_json(orient="records", date_format="iso")
+        )
 
         valid_records = []
         invalid_records = []
 
         for idx, row in enumerate(records):
             row_number = idx + 2  # Account for header row and 1-based index
+            mapped_row = {
+                column_mapping[str(source)]: value
+                for source, value in row.items()
+                if str(source) in column_mapping
+            }
             try:
                 # Validate row dictionary against Pydantic schema
-                validated_row = FacilityInfoRecordModel.model_validate(row)
+                validated_row = FacilityInfoRecordModel.model_validate(mapped_row)
                 valid_records.append(validated_row)
             except ValidationError as err:
                 # Capture error details for the data-quality report
                 invalid_records.append(
                     {
                         "row_number": row_number,
-                        "facility_id": row.get("Facility ID"),
-                        "unit_id": row.get("Unit ID"),
-                        "year": row.get("Year"),
+                        "facility_id": mapped_row.get("Facility ID"),
+                        "unit_id": mapped_row.get("Unit ID"),
+                        "year": mapped_row.get("Year"),
                         "errors": err.errors(),
-                        "raw": row,
-                        "as_json": json.dumps(row),
+                        "raw": mapped_row,
+                        "as_json": json.dumps(mapped_row, default=str),
                     }
                 )
 
-        return valid_records, invalid_records
+        return {
+            "columns": columns,
+            "mapping_options": list(aliases),
+            "column_mapping": column_mapping,
+            "unmapped_columns": unmapped_columns,
+            "preview_records": preview_records,
+            "valid_records": valid_records,
+            "invalid_records": invalid_records,
+            "row_count": len(records),
+        }
 
 
 if __name__ == "__main__":

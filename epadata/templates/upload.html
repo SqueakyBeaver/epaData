@@ -1,26 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Upload{% endblock %}
-{% block header %}<h1 class="mx-auto">Upload Data</h1>{% endblock %}
-
+{% block head %}
+    <link href="https://cdn.datatables.net/v/bs5/dt-3.1.3/b-4.1.2/cc-2.1.2/fc-6.1.1/fh-5.1.2/r-4.1.1/rg-2.1.1/sc-3.1.1/sb-2.1.1/sl-4.1.1/datatables.min.css"
+          rel="stylesheet"
+          integrity="sha384-vm1054UV/Axn+nyk359D1A3MWWJzmV1BrIUFYH1Xx3q5hUc5+rNT9HwRiakxmtpz"
+          crossorigin="anonymous" />
+    <script src="https://cdn.datatables.net/v/bs5/dt-3.1.3/b-4.1.2/cc-2.1.2/fc-6.1.1/fh-5.1.2/r-4.1.1/rg-2.1.1/sc-3.1.1/sb-2.1.1/sl-4.1.1/datatables.min.js"
+            integrity="sha384-ByK1ESNwIwVHCz1XNv4zT4gQINpsVjcJk2BQAYYn9iZfW/mtPNMd299r2t6BW0mB"
+            crossorigin="anonymous"></script>
+{% endblock %}
+{% block header %}
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <h1>Upload dataset</h1>
+        <span class="badge text-bg-primary">CSV or Excel</span>
+    </div>
+{% endblock %}
 {% block content %}
-    <form hx-post="{{ url_for('upload.upload_dataset_file') }}"
-          hx-target="next output"
-          hx-encoding="multipart/form-data"
-          method="post">
-        <div class="input-group">
-            <label class="input-group-text" for="datasetFileUpload">Upload dataset file</label>
-            <input type="file"
-                   class="form-control"
-                   id="datasetFileUpload"
-                   name="dataset"
-                   hx-swap="outerHTML"
-                   hx-preserve />
-            <button class="btn btn-outline-secondary" type="submit">Submit</button>
+    <!-- HTMX Flash/Error Message Container -->
+    <div id="alert-container">
+        {% if message %}
+            <div class="alert alert-{{ message_type }}" role="alert">{{ message }}</div>
+        {% endif %}
+    </div>
+    <!-- Step 1: Upload Form -->
+    <section class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Choose a file</h2>
+            <p class="text-body-secondary">Preview the rows before anything is saved to the database.</p>
+            <form hx-post="{{ url_for('upload.upload_dataset_file') }}"
+                  hx-target="#output"
+                  hx-swap="innerHTML"
+                  hx-encoding="multipart/form-data"
+                  hx-indicator="#upload-spinner"
+                  class="row g-3 align-items-end">
+                <div class="col-md-9">
+                    <label class="form-label" for="datasetFileUpload">Dataset file</label>
+                    <input type="file"
+                           class="form-control"
+                           id="datasetFileUpload"
+                           name="dataset"
+                           accept=".csv,.xls,.xlsx"
+                           required />
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2"
+                            type="submit">
+                        <span id="upload-spinner"
+                              class="spinner-border spinner-border-sm htmx-indicator"
+                              role="status"
+                              aria-hidden="true"></span>
+                        <span>Preview upload</span>
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
-    <output id="output"></output>
-    <button class="btn btn-primary"
-            hx-swap="none"
-            hx-get="{{ url_for('index.test_alert') }}">Press me to test alerts</button>
-    {# TODO: Datasets overview. #}
+    </section>
+    <!-- Step 2: Dynamic Preview & Mapping Container -->
+    <div id="output"></div>
 {% endblock %}

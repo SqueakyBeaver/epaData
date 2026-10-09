@@ -1,0 +1,266 @@
+{# NEW: columns that must stay visible when the screen is narrow. Both spellings are
+   listed because the CSV uses "Facility Name" and the EPA API uses "facilityName". #}
+{% set key_cols = [
+    "Facility Name",
+    "facilityName",
+    "State",
+    "stateCode",
+    "Facility ID",
+    "facilityId",
+    "Unit ID",
+    "unitId",
+    "Year",
+    "year",
+    "Primary Fuel Type"
+] %}
+{% set key_idx = [] %}
+{% for column in preview.columns %}
+    {% if column in key_cols %}
+        {% set _ = key_idx.append(loop.index0) %}
+    {% endif %}
+{% endfor %}
+<form hx-post="{{ url_for('upload.confirm_upload') }}"
+      hx-target="#output"
+      hx-swap="innerHTML"
+      hx-indicator="#confirm-spinner"
+      hx-on::after-request="if (event.detail.successful) { const fileInput = document.getElementById('datasetFileUpload'); if (fileInput) fileInput.value = ''; }"
+      class="d-flex flex-column gap-3">
+    <input type="hidden" name="preview_token" value="{{ preview.token }}" />
+    <!-- Dataset Name Input -->
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold" for="datasetName">Dataset name</label>
+                    <input class="form-control {%- if preview.name_exists -%} is-invalid{%- endif -%}"
+                           id="datasetName"
+                           name="dataset_name"
+                           value="{{ preview.dataset_name }}"
+                           hx-post="{{ url_for('upload.check_dataset_name') }}"
+                           hx-trigger="keyup changed delay:300ms, search"
+                           hx-target="#dataset-name-feedback"
+                           hx-swap="innerHTML"
+                           hx-validate="true"
+                           required />
+                    <div id="dataset-name-feedback">
+                        {%- if preview.name_exists -%}
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-x-circle me-1"></i>A dataset with this name already exists.
+                            </div>
+                            <script>
+                                document.getElementById("datasetName").setCustomValidity("A dataset with this name already exists.");
+                            </script>
+                        {%- else -%}
+                            <div class="form-text">Autofilled from the filename; editable before import.</div>
+                        {%- endif -%}
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end text-body-secondary">
+                    {{ preview.row_count }} row(s) in <strong>{{ preview.original_filename }}</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Bootstrap 5 Accordion Container -->
+    <div class="accordion shadow-sm" id="uploadPreviewAccordion">
+        <!-- Accordion Item 1: Column Mapping -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingColumnMapping">
+                <button class="accordion-button{% if not preview.unmapped_columns %}
+                                   collapsed{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseColumnMapping"
+                        aria-expanded="{%- if preview.unmapped_columns -%}true{%- else -%}false{%- endif -%}"
+                        aria-controls="collapseColumnMapping">
+                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
+                        <span class="fw-semibold">Column Mapping</span>
+                        {%- if preview.unmapped_columns -%}
+                            <span class="badge text-bg-warning">{{ preview.unmapped_columns|length }} rejected field(s)</span>
+                        {%- else -%}
+                            <span class="badge text-bg-success">All fields mapped</span>
+                        {%- endif -%}
+                    </div>
+                </button>
+            </h2>
+            <div id="collapseColumnMapping"
+                 class="accordion-collapse collapse{% if preview.unmapped_columns %}
+                            show{% endif %}"
+                 aria-labelledby="headingColumnMapping"
+                 data-bs-parent="#uploadPreviewAccordion">
+                <div class="accordion-body">
+                    <p class="text-body-secondary">Known headers are mapped automatically. Assign rejected fields to the EPA field they represent, or ignore them.</p>
+                    {%- if preview.unmapped_columns -%}
+                        <div class="alert alert-warning">
+                            <strong>Rejected fields:</strong> {{ preview.unmapped_columns|join(", ") }}
+                        </div>
+                    {%- endif -%}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Uploaded field</th>
+                                    <th scope="col">Use as</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {%- for source in preview.columns -%}
+                                    {%- set selected = preview.column_mapping.get(source, '') -%}
+                                    <tr>
+                                        <th scope="row"><code>{{ source }}</code></th>
+                                        <td>
+                                            <select class="form-select form-select-sm"
+                                                    name="mapping_{{ loop.index0 }}"
+                                                    aria-label="Map {{ source }}">
+                                                <option value="__ignore__"{% if not selected %} selected{% endif %}>Ignore this field</option>
+                                                {%- for option in preview.mapping_options -%}
+                                                    <option value="{{ option }}"{% if selected == option %} selected{% endif %}>{{ option }}</option>
+                                                {%- endfor -%}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            {%- if selected -%}
+                                                <span class="badge text-bg-success">Mapped</span>
+                                            {%- else -%}
+                                                <span class="badge text-bg-warning">Rejected / ignored</span>
+                                            {%- endif -%}
+                                        </td>
+                                    </tr>
+                                {%- endfor -%}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Accordion Item 2: Data Preview Table -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingDataPreview">
+                <button class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseDataPreview"
+                        aria-expanded="false"
+                        aria-controls="collapseDataPreview">
+                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
+                        <span class="fw-semibold">Data Preview</span>
+                        <div>
+                            <span class="badge text-bg-success">{{ preview.valid_records|length }} valid</span>
+                            <span class="badge text-bg-danger">{{ preview.invalid_records|length }} invalid</span>
+                        </div>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapseDataPreview"
+                 class="accordion-collapse collapse"
+                 aria-labelledby="headingDataPreview"
+                 data-bs-parent="#uploadPreviewAccordion">
+                <div class="accordion-body">
+                    <div class="table-responsive preview-table">
+                        <table class="table table-bordered table-striped table-hover table-sm mb-0 nowrap"
+                               id="previewTable"
+                               data-key-cols='{{ key_idx|tojson }}'>
+                            <thead>
+                                <tr>
+                                    {%- for column in preview.columns -%}
+                                        <th scope="col">{{ column }}</th>
+                                    {%- endfor -%}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {%- for row in preview.preview_records -%}
+                                    <tr>
+                                        {%- for column in preview.columns -%}
+                                            <td>{{ row.get(column) if row.get(column) is not none else '' }}</td>
+                                        {%- endfor -%}
+                                    </tr>
+                                {%- else -%}
+                                    <tr>
+                                        <td colspan="{{ preview.columns|length }}"
+                                            class="text-body-secondary text-center py-3">No rows were found.</td>
+                                    </tr>
+                                {%- endfor -%}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Rejected Rows Section (if applicable) -->
+    {%- if preview.invalid_records -%}
+        <section class="card border-danger shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 text-danger">Rejected rows</h2>
+                <p>{{ preview.invalid_records|length }} row(s) will not be uploaded because required values are invalid.</p>
+                <ul class="mb-0">
+                    {%- for rejected in preview.invalid_records[:20] -%}
+                        <li>Row {{ rejected.row_number }}: {{ rejected.errors|map(attribute='msg') |join('; ') }}</li>
+                    {%- endfor -%}
+                </ul>
+            </div>
+        </section>
+    {%- endif -%}
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end gap-2 mb-4">
+        <button type="button"
+                class="btn btn-outline-secondary"
+                onclick="document.getElementById('output').innerHTML = '';
+                         document.getElementById('datasetFileUpload').value = '';">Clear upload</button>
+        <button id="confirm-submit-btn"
+                class="btn btn-success d-flex align-items-center gap-2"
+                type="submit"
+                hx-indicator="#confirm-spinner"
+                :disabled="!q('#datasetName').checkValidity()">
+            <span id="confirm-spinner"
+                  class="spinner-border spinner-border-sm htmx-indicator"
+                  role="status"
+                  aria-hidden="true"></span>
+            <span>Confirm and upload</span>
+        </button>
+    </div>
+</form>
+<script>
+    (function() {
+        var tableEl = document.querySelector('#previewTable');
+        if (!tableEl) return;
+
+        // Destroy existing DataTables 2+ instance using DataTables API
+        if (DataTable.isDataTable(tableEl)) {
+            DataTable.type(tableEl) ? DataTable.get(tableEl).destroy() : new DataTable(tableEl).destroy();
+        }
+
+        var keyCols = JSON.parse(tableEl.dataset.keyCols || "[]");
+
+        var previewDT = new DataTable(tableEl, {
+            paging: true,
+            pageLength: 25,
+            lengthMenu: [10, 25, 50, 100],
+            responsive: true,
+            order: [],
+            scrollX: true,
+            scrollY: 500,
+            autoWidth: false,
+            columnDefs: [{
+                targets: "_all",
+                defaultContent: ""
+            }, {
+                responsivePriority: 1,
+                targets: keyCols
+            }]
+        });
+    })();
+</script>
+<style>
+    /* Force header and unexpanded data to not wrap */
+    .dataTables_scrollHead th,
+    .dataTables_scrollBody td {
+        white-space: nowrap !important;
+    }
+
+    /* Let extra details wrap */
+    #previewTable li {
+        white-space: normal !important;
+    }
+</style>

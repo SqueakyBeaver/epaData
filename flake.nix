@@ -64,6 +64,7 @@
               sqlalchemy
               flask
               flask-sqlalchemy
+              flask-caching
               python-dotenv
               pandas
               numpy

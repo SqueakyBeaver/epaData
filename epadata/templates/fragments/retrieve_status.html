@@ -2,7 +2,7 @@
    "Search facilities". The route (retrieve_data) passes in ONE of these:
      error   - text to show when nothing could be retrieved
      summary - dict of counts returned by import_annual_data()
-   plus, on success: preview (rows read back from the database), years, filters. #}
+   plus, on success: table (a DataFrame read back from the database), years, filters. #}
 {% if error %}
     <div class="alert alert-danger my-3">{{ error }}</div>
 {% else %}
@@ -31,6 +31,9 @@
                         {% if filters.state_code %}&middot; state {{ filters.state_code }}{% endif %}
                         {% if filters.facility_id %}&middot; facility {{ filters.facility_id }}{% endif %}
                         {% if filters.fuel_code %}&middot; fuel {{ filters.fuel_code }}{% endif %}
+                        {% if filters.unit_type %}&middot; unit type {{ filters.unit_type }}{% endif %}
+                        {% if filters.control_technology %}&middot; control technology {{ filters.control_technology }}{% endif %}
+                        {% if filters.source_category %}&middot; source category {{ filters.source_category }}{% endif %}
                     </li>
                     {# Every record received lands in exactly one of the next three lines:
                        received = saved + skipped + rejected #}
@@ -73,28 +76,15 @@
         </div>
     </div>
 
-    {# Read back FROM THE DATABASE, so this proves the data was really stored.
-       Empty when nothing was saved (for example, everything was skipped). #}
-    {% if preview %}
-        <p class="text-body-secondary mb-1">Preview: first {{ preview|length }} records saved by this retrieval, read back from the database.</p>
-        <div class="table-responsive">
-            <table class="table table-striped table-sm">
-                <thead>
-                    {# CHANGED: units added to the column headings #}
-                    <tr><th>Facility</th><th>State</th><th>Unit</th><th>Primary fuel</th><th>Year</th>
-                        <th class="text-end">Op. hours</th><th class="text-end">Heat input (MMBtu)</th>
-                        <th class="text-end">CO₂ (tons)</th><th class="text-end">SO₂ (tons)</th><th class="text-end">NOx (tons)</th></tr>
-                </thead>
-                <tbody>
-                    {% for r in preview %}
-                        <tr>
-                            <td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] or '' }}</td><td>{{ r[4] }}</td>
-                            {# A blank measurement stays blank; it is never shown as 0. #}
-                            {% for v in r[5:] %}<td class="text-end">{{ '{:,.2f}'.format(v) if v is not none else '' }}</td>{% endfor %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    {# ALL records of this retrieval, read back FROM THE DATABASE (this proves they were
+       stored). It used to be a 25-row preview. Empty when the EPA sent nothing. #}
+    {% if table is not none and not table.empty %}
+        <p class="text-body-secondary mb-1">
+            All <strong>{{ '{:,}'.format(table|length) }}</strong> records of this retrieval, read back from the database.
+            Use the page-length menu to show 100, 500 or all rows, sort by clicking a heading, or export the table as CSV or Excel.
+            These records can now be found with the full-text search below and on the Dataset Explorer page.
+        </p>
+        {% set data = table %}
+        {% include "fragments/dataset_table.html" %}
     {% endif %}
 {% endif %}

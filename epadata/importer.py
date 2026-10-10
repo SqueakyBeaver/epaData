@@ -186,8 +186,10 @@ def _save_row(session, dataset, row, attrs, fac_cache, unit_cache, created, i, v
 
 # ---- the public function ----------------------------------------------------
 def import_annual_data(session, annual_rows, attribute_rows, *, name, years,
-                       data_source="EPA CAMPD API"):
+                       data_source="EPA CAMPD API", query_params=None):
     """Save the rows and return a summary dict. Commits once at the end.
+
+    query_params (NEW): the filters of the retrieval, saved in dataset.query_params.
 
     received = accepted + skipped_identical + rejected
     """
@@ -205,7 +207,8 @@ def import_annual_data(session, annual_rows, attribute_rows, *, name, years,
     while session.scalar(select(Dataset.id).where(Dataset.name == unique_name)):
         unique_name, n = f"{name} ({n})", n + 1
     dataset = Dataset(name=unique_name, data_source=data_source,
-                      reporting_years=sorted(years), raw_records_cnt=len(annual_rows))
+                      reporting_years=sorted(years), raw_records_cnt=len(annual_rows),
+                      query_params=query_params)  # NEW: query_params
     session.add(dataset)
     session.flush()
 

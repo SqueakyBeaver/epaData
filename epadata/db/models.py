@@ -55,6 +55,9 @@ class Dataset(Base):
     raw_records_cnt: Mapped[int] = mapped_column(default=0)
     accepted_records_cnt: Mapped[int] = mapped_column(default=0)
     notes: Mapped[str | None] = mapped_column(Text, default=None)
+    # NEW: the filters of an EPA retrieval, kept as their own field (years, state, fuel, ...).
+    # None for uploads. Stored as JSON text, e.g. {"years": [2022], "state": "KY"}.
+    query_params: Mapped[dict | None] = mapped_column(JSON, default=None)
 
     annual_records: Mapped[list["AnnualRecord"]] = relationship(
         back_populates="dataset",

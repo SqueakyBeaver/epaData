@@ -15,6 +15,23 @@
     </div>
 {% endblock %}
 {% block content %}
+    {# NEW: how this dataset was retrieved (EPA retrievals only; uploads have no query) #}
+    {% if dataset.query_params %}
+        <section class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6">Retrieval query</h2>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-3">Source</dt><dd class="col-sm-9">{{ dataset.data_source }}</dd>
+                    <dt class="col-sm-3">Retrieved</dt><dd class="col-sm-9">{{ dataset.retrieval_date.strftime("%Y-%m-%d %H:%M") if dataset.retrieval_date else '—' }}</dd>
+                    {% for key, value in dataset.query_params.items() %}
+                        <dt class="col-sm-3">{{ key|replace('_', ' ')|capitalize }}</dt>
+                        <dd class="col-sm-9">{{ value|join(', ') if value is iterable and value is not string else value }}</dd>
+                    {% endfor %}
+                    <dt class="col-sm-3">Records</dt><dd class="col-sm-9">{{ dataset.raw_records_cnt }} received, {{ dataset.accepted_records_cnt }} accepted</dd>
+                </dl>
+            </div>
+        </section>
+    {% endif %}
     {# NEW: the data-quality report saved at upload time (rejected rows and why) #}
     {% if dataset.notes %}
         <details class="card shadow-sm">

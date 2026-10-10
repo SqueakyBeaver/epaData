@@ -219,23 +219,39 @@ class CAMPDClient:
             previous = batch
         return rows
 
-    def get_annual_emissions(self, years, state_code=None, facility_id=None, fuel_code=None):
-        """One dict per unit per year, WITH emissions numbers. `years` is a list of ints."""
+    # CHANGED: both methods now take unit_type, control_technology and source_category too.
+    # The EPA wants their full descriptions, e.g. "Combustion turbine", "Wet Limestone",
+    # "Electric Utility" (several could be joined with "|").
+    def get_annual_emissions(
+        self, years, state_code=None, facility_id=None, fuel_code=None,
+        unit_type=None, control_technology=None, source_category=None,
+    ):
+        """One dict per unit per year, WITH emissions numbers. `years` is a list of ints.
+
+        source_category is accepted but NOT sent: this endpoint is not documented to take it.
+        The route narrows the rows by source category using get_facility_attributes instead.
+        """
         rows = []
         for year in years:
             rows += self._get_all_pages(
                 "emissions-mgmt/emissions/apportioned/annual",
                 year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
+                unitType=unit_type, controlTechnologies=control_technology,
             )
         return rows
 
-    def get_facility_attributes(self, years, state_code=None, facility_id=None, fuel_code=None):
+    def get_facility_attributes(
+        self, years, state_code=None, facility_id=None, fuel_code=None,
+        unit_type=None, control_technology=None, source_category=None,
+    ):
         """One dict per unit per year, WITH county / lat / long / operation date."""
         rows = []
         for year in years:
             rows += self._get_all_pages(
                 "facilities-mgmt/facilities/attributes",
                 year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
+                unitType=unit_type, controlTechnologies=control_technology,
+                sourceCategory=source_category,
             )
         return rows
 

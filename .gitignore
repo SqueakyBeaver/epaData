@@ -225,3 +225,9 @@ result/
 *.sqlite
 
 .DS_Store
+
+*.csv
+!sampledata.csv
+uploads/*
+!uploads/.gitkeep
+search_index/

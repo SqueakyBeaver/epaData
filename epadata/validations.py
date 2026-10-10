@@ -17,6 +17,13 @@ from pydantic import (
 CURRENT_YEAR = datetime.now().year
 
 
+class DuplicateRowError(Exception):
+    """NEW: a row repeats a facility + unit + year that appeared earlier in the same file."""
+
+    def __init__(self, first_row: int):
+        self.first_row = first_row
+
+
 class FacilityInfoRecordModel(BaseModel):
     """
     Pydantic model for validating uploaded EPA CAMPD facility attribute
@@ -189,6 +196,7 @@ class FacilityInfoRecordModel(BaseModel):
 
         valid_records = []
         invalid_records = []
+        first_seen: dict[tuple, int] = {}  # NEW: (facility, unit, year) -> first row number
 
         for idx, row in enumerate(records):
             row_number = idx + 2  # Account for header row and 1-based index
@@ -200,7 +208,35 @@ class FacilityInfoRecordModel(BaseModel):
             try:
                 # Validate row dictionary against Pydantic schema
                 validated_row = FacilityInfoRecordModel.model_validate(mapped_row)
+                # NEW: the same facility + unit + year twice in one file used to crash the
+                # import (database uniqueness rule). Keep the first, report the repeats.
+                key = (
+                    validated_row.facility_id,
+                    validated_row.unit_id,
+                    validated_row.reporting_year,
+                )
+                if key in first_seen:
+                    raise DuplicateRowError(first_seen[key])
+                first_seen[key] = row_number
                 valid_records.append(validated_row)
+            except DuplicateRowError as dup:
+                invalid_records.append(
+                    {
+                        "row_number": row_number,
+                        "facility_id": mapped_row.get("Facility ID"),
+                        "unit_id": mapped_row.get("Unit ID"),
+                        "year": mapped_row.get("Year"),
+                        "errors": [
+                            {
+                                "type": "duplicate",
+                                "loc": ("Facility ID", "Unit ID", "Year"),
+                                "msg": f"Duplicate of row {dup.first_row}: same facility, unit and year",
+                            }
+                        ],
+                        "raw": mapped_row,
+                        "as_json": json.dumps(mapped_row, default=str),
+                    }
+                )
             except ValidationError as err:
                 # Capture error details for the data-quality report
                 invalid_records.append(

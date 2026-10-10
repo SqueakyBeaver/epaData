@@ -208,6 +208,37 @@ class CAMPDClient:
 
         return pd.json_normalize(resp)
 
+    def _get_all_pages(self, endpoint: str, per_page: int = 100, **params):
+        """Ask for page 1, 2, 3 ... until the API returns an empty page."""
+        rows, previous = [], None
+        for page in range(1, 1001):  # hard stop so a misbehaving API can't loop forever
+            batch = self.send_request(endpoint, page=page, perPage=per_page, **params)
+            if not batch or batch == previous:
+                break
+            rows.extend(batch)
+            previous = batch
+        return rows
+
+    def get_annual_emissions(self, years, state_code=None, facility_id=None, fuel_code=None):
+        """One dict per unit per year, WITH emissions numbers. `years` is a list of ints."""
+        rows = []
+        for year in years:
+            rows += self._get_all_pages(
+                "emissions-mgmt/emissions/apportioned/annual",
+                year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
+            )
+        return rows
+
+    def get_facility_attributes(self, years, state_code=None, facility_id=None, fuel_code=None):
+        """One dict per unit per year, WITH county / lat / long / operation date."""
+        rows = []
+        for year in years:
+            rows += self._get_all_pages(
+                "facilities-mgmt/facilities/attributes",
+                year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
+            )
+        return rows
+
 
 if __name__ == "__main__":
     c = CAMPDClient()

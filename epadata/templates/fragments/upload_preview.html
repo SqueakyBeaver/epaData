@@ -193,11 +193,23 @@
         <section class="card border-danger shadow-sm">
             <div class="card-body">
                 <h2 class="h5 text-danger">Rejected rows</h2>
-                <p>{{ preview.invalid_records|length }} row(s) will not be uploaded because required values are invalid.</p>
+                <p>
+                    {{ preview.invalid_records|length }} row(s) will not be uploaded because required values are invalid.
+                    {# NEW: say where the full list goes #}
+                    Every rejected row and its reason is saved in this dataset's data-quality report.
+                </p>
                 <ul class="mb-0">
                     {%- for rejected in preview.invalid_records[:20] -%}
-                        <li>Row {{ rejected.row_number }}: {{ rejected.errors|map(attribute='msg') |join('; ') }}</li>
+                        {# CHANGED: each reason now starts with the name of the field it is about #}
+                        <li>Row {{ rejected.row_number }}:
+                            {% for error in rejected.errors -%}
+                                {{ error.loc|join('/') }}: {{ error.msg }}{{ '; ' if not loop.last }}
+                            {%- endfor %}
+                        </li>
                     {%- endfor -%}
+                    {%- if preview.invalid_records|length > 20 -%}
+                        <li class="text-body-secondary">... and {{ preview.invalid_records|length - 20 }} more (all are listed in the report after upload).</li>
+                    {%- endif -%}
                 </ul>
             </div>
         </section>

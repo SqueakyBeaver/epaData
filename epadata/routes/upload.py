@@ -15,6 +15,8 @@ from epadata.validations import FacilityInfoRecordModel
 bp = Blueprint("upload", __name__, url_prefix="/upload")
 
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
+MAX_UPLOAD_MB = 25  # NEW: largest file accepted (see the 413 handler below)
+MAX_REPORT_LINES = 500  # NEW: most rejected rows written into the saved data-quality report
 PREVIEW_CACHE_TIMEOUT = 1800  # 30 minutes TTL for staged uploads
 
 
@@ -50,6 +52,14 @@ def _render_response(
         response = flash_message(str(message), alert_type, response)
 
     return response
+
+
+@bp.app_errorhandler(413)
+def file_too_large(error):
+    """NEW: Flask refuses oversized requests (MAX_CONTENT_LENGTH, set in create_app)."""
+    return _render_response(
+        message=f"That file is too large. The limit is {MAX_UPLOAD_MB} MB.", status=413
+    )
 
 
 @bp.route("/")
@@ -232,8 +242,8 @@ def confirm_upload():
             )
         _import_rows(session, preview)
 
-    # Cleanup temporary file from disk & cache entry
-    file_path.unlink(missing_ok=True)
+    # CHANGED: the original file is now KEPT (in the uploads folder), as the project
+    # requirements ask. Only the temporary preview entry is cleared.
     globals.cache.delete(cache_key)
 
     success_msg = (
@@ -258,6 +268,28 @@ def confirm_upload():
     )
 
 
+def _quality_report(preview: dict) -> str:
+    """NEW: the data-quality report saved with the dataset, so rejected rows are never
+    silently lost. Lists every rejected row with the reason (up to MAX_REPORT_LINES)."""
+    rejected = preview["invalid_records"]
+    lines = [
+        f"Original file kept as: {Path(preview['filename']).name}",
+        f"Rows in file: {preview['row_count']}; accepted: {len(preview['valid_records'])}; "
+        f"rejected: {len(rejected)}",
+    ]
+    if rejected:
+        lines.append("Rejected rows:")
+    for item in rejected[:MAX_REPORT_LINES]:
+        reasons = "; ".join(
+            f"{'/'.join(str(part) for part in err.get('loc', ())) or 'row'}: {err['msg']}"
+            for err in item["errors"]
+        )
+        lines.append(f"  Row {item['row_number']}: {reasons}")
+    if len(rejected) > MAX_REPORT_LINES:
+        lines.append(f"  ... and {len(rejected) - MAX_REPORT_LINES} more rejected rows")
+    return "\n".join(lines)
+
+
 def _import_rows(session, preview: dict) -> None:
     valid_rows = preview["valid_records"]
     dataset = Dataset(
@@ -267,6 +299,7 @@ def _import_rows(session, preview: dict) -> None:
         original_filename=preview["original_filename"],
         raw_records_cnt=preview["row_count"],
         accepted_records_cnt=len(valid_rows),
+        notes=_quality_report(preview),  # NEW: the data-quality report
     )
     session.add(dataset)
     session.flush()
@@ -302,6 +335,7 @@ def _import_rows(session, preview: dict) -> None:
                 unit = Unit(
                     facility_id=row.facility_id,
                     epa_unit_id=row.unit_id,
+                    type=row.unit_type,  # NEW: unit type was read but never saved
                     primary_fuel=row.primary_fuel_type,
                     secondary_fuel=row.secondary_fuel_type,
                     operating_date=row.commercial_operation_date,

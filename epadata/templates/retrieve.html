@@ -18,6 +18,9 @@
 {% endblock %}
 {% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
 {% block content %}
+  {# NEW: full-text search of the EPA data already saved, above the retrieval filters #}
+  {% include "fragments/search/fulltext_bar.html" %}
+  <h2 class="h5 mb-0">Retrieve data from the EPA</h2>
   <p class="text-body-secondary mb-0"><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
   <form class="grid g-4"
         hx-post="{{ url_for('.retrieve_data') }}"

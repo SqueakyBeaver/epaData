@@ -5,7 +5,7 @@ from flask import Flask
 from flask_caching import Cache
 
 from epadata.routes import blueprints
-from epadata import globals
+from epadata import globals, search  # NEW: search = full-text search (Whoosh)
 
 
 def create_app(test_config=None):
@@ -16,6 +16,12 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("FLASK_SECRET_KEY"),
         DB_URI="sqlite:///epadata/db/db.sqlite",
         UPLOADS_DIR="./epadata/data/uploads",
+        # NEW: where Whoosh keeps its index. Built from this file's own location, so it
+        # does not depend on which folder the app is started from.
+        SEARCH_INDEX_DIR=os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "data", "search_index"
+        ),
+        MAX_CONTENT_LENGTH=25 * 1024 * 1024,  # NEW: reject uploads over 25 MB
         CACHE_TYPE="SimpleCache",
         CACHE_DEFAULT_TIMEOUT=300,
     )
@@ -32,6 +38,8 @@ def create_app(test_config=None):
 
     globals.cache = Cache()
     globals.cache.init_app(globals.app)
+
+    search.init_search(globals.app)  # NEW: open (or build) the search index
 
     return globals.app
 

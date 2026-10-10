@@ -1,0 +1,107 @@
+{# Full-text search box with its explanation. Included at the top of retrieve.html,
+   above the retrieval filters. Needs `ft` (the search result) only when a search was already run. #}
+{% set examples = [
+    ("Find coal-fired units in Kentucky in 2025 with annual CO₂ emissions greater than 500,000 short tons",
+     "A whole sentence: fuel, state, year and an emissions limit are picked out for you"),
+    ("natural gas units in Ohio between 2022 and 2024", "Several years: a range works too"),
+    ("SO2 below 100 tons since 2020", "Other measurements: SO₂, NOx, heat input, gross load, operating hours"),
+    ("kentucky coal", "Plain words: every word must match somewhere in the record"),
+    ("\"E W Brown\"", "Quotes: the words exactly in this order"),
+    ("brow*", "* finishes a word: finds Brown, Browns, ..."),
+    ("coal OR gas", "OR: either word (OR must be capital letters)"),
+    ("coal NOT brown", "NOT: leave out records containing the second word"),
+    ("state:KY year:[2020 TO 2025]", "field:value limits one field; [a TO b] is a range"),
+    ("shawnie~", "~ forgives a small spelling mistake"),
+] %}
+<section id="fulltext-search" class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="h5">Full-text search</h2>
+        <p class="text-body-secondary mb-3">
+            Type a question in your own words, or just a few keywords. This searches
+            <strong>everything saved in the database</strong> (uploaded files and data retrieved from the EPA),
+            best match first. It is separate from the retrieval filters below: it does not use them,
+            and they do not use it.
+        </p>
+        <form class="row g-2 align-items-center"
+              action="{{ url_for('retrieve.index') }}"
+              method="get"
+              hx-get="{{ url_for('retrieve.index') }}"
+              hx-target="#fulltext-results"
+              hx-push-url="true"
+              hx-indicator="#fulltext-spinner">
+            <div class="col">
+                <label class="visually-hidden" for="fulltext-q">Full-text search</label>
+                <input type="search"
+                       class="form-control form-control-lg"
+                       id="fulltext-q"
+                       name="q"
+                       maxlength="200"
+                       autocomplete="off"
+                       placeholder="Try: coal-fired units in Kentucky in 2025 with CO2 greater than 500,000"
+                       value="{{ ft.query if ft is defined else '' }}" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-lg d-flex align-items-center gap-2">
+                    <span id="fulltext-spinner"
+                          class="spinner-border spinner-border-sm htmx-indicator"
+                          role="status"
+                          aria-hidden="true"></span>
+                    <span>Search</span>
+                </button>
+            </div>
+        </form>
+
+        <details class="mt-3">
+            <summary class="fw-semibold">How does this search work?</summary>
+            <div class="mt-2 small">
+                <p class="mb-2">
+                    <strong>Sentences.</strong> The search looks for these in what you type and shows you how it
+                    read them (&ldquo;Understood as&hellip;&rdquo;):
+                </p>
+                <ul class="mb-2">
+                    <li><strong>Fuel</strong>: coal, natural gas, oil, diesel, petroleum coke, wood
+                        (&ldquo;coal-fired&rdquo; works).</li>
+                    <li><strong>State</strong>: the full name (Kentucky) or the capital-letter code (KY).</li>
+                    <li><strong>Year</strong>: 2025, a range (2022-2024, between 2022 and 2024) or since / before / after a year.</li>
+                    <li><strong>Amounts</strong>: CO₂, SO₂, NOx, heat input, gross load or operating hours,
+                        with greater than, more than, over, at least, less than, under, at most or between
+                        (&ldquo;500,000&rdquo;, &ldquo;500k&rdquo; and &ldquo;2 million&rdquo; are all fine).</li>
+                    <li>Anything else (a facility name, a county) is matched as ordinary words.</li>
+                </ul>
+                <p class="mb-2">
+                    <strong>Keywords.</strong> Each saved record (one unit in one year) is indexed by the words in
+                    its facility name, state, county, unit ID, unit type, fuels, source category, program, control
+                    equipment, year and dataset name. Searches ignore capital letters and word endings
+                    (<code>plant</code> also finds <code>plants</code>). A match in the facility name counts more
+                    than one in the dataset name. If nothing matches, the words are retried as word beginnings.
+                    A record with no value saved for an amount (for example no CO₂) can never match a condition on that amount.
+                </p>
+                <p class="mb-1">Click an example to try it:</p>
+                <ul class="list-unstyled mb-2">
+                    {% for text, meaning in examples %}
+                        <li class="mb-1">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary font-monospace"
+                                    data-q="{{ text }}"
+                                    onclick="document.getElementById('fulltext-q').value = this.dataset.q;
+                                             document.getElementById('fulltext-q').form.requestSubmit();">{{ text }}</button>
+                            <span class="text-body-secondary ms-1">{{ meaning }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <p class="mb-0">
+                    Fields you can use before a colon:
+                    <code>facility</code> is called <code>facility_name</code>, and the others are
+                    <code>state</code>, <code>county</code>, <code>unit_id</code>, <code>facility_id</code>,
+                    <code>unit_type</code>, <code>primary_fuel</code>, <code>secondary_fuel</code>,
+                    <code>source_category</code>, <code>program_code</code>, <code>controls</code>,
+                    <code>year</code>, <code>dataset_name</code> and the amounts <code>co2_mass</code>, <code>so2_mass</code>, <code>nox_mass</code>, <code>heat_input</code>, <code>gross_load</code>, <code>operating_time</code> (for example <code>co2_mass:[500000 TO 9000000]</code>).
+                </p>
+            </div>
+        </details>
+
+        <div id="fulltext-results" class="mt-3">
+            {% if ft is defined %}{% include "fragments/search/fulltext_results.html" %}{% endif %}
+        </div>
+    </div>
+</section>

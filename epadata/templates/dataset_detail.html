@@ -15,6 +15,13 @@
     </div>
 {% endblock %}
 {% block content %}
+    {# NEW: the data-quality report saved at upload time (rejected rows and why) #}
+    {% if dataset.notes %}
+        <details class="card shadow-sm">
+            <summary class="card-body fw-semibold">Data-quality report for this dataset</summary>
+            <pre class="px-3 pb-3 mb-0 small" style="white-space: pre-wrap;">{{ dataset.notes }}</pre>
+        </details>
+    {% endif %}
     <section class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="table-responsive">

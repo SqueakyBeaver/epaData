@@ -1,0 +1,88 @@
+{# Results of the full-text search. htmx swaps this into #fulltext-results; a direct visit
+   to /retrieve/?q=... includes it in the page. Needs `ft` from search.search(). #}
+{% macro nav(href, label, css='') -%}
+<a class="{{ css }}" href="{{ href }}" hx-get="{{ href }}" hx-target="#fulltext-results" hx-push-url="true">{{ label }}</a>
+{%- endmacro %}
+
+{% set relax_arg = 1 if ft.relaxed else none %}
+{% if ft.error %}
+    <div class="alert alert-warning mb-0">{{ ft.error }}</div>
+{% elif not ft.query %}
+    <p class="text-body-secondary mb-0">Type something above to search.</p>
+{% else %}
+    {% if ft.understood %}
+        <div class="mb-2 small">
+            <span class="text-body-secondary">Understood as:</span>
+            {% for chip in ft.understood %}<span class="badge text-bg-secondary fw-normal">{{ chip }}</span> {% endfor %}
+        </div>
+    {% endif %}
+    {% if ft.total == 0 %}
+        {% if ft.relaxable %}
+            <div class="alert alert-secondary mb-0">
+                No saved record meets every condition.
+                <strong>{{ '{:,}'.format(ft.relaxable) }}</strong> record{{ '' if ft.relaxable == 1 else 's' }}
+                match{{ 'es' if ft.relaxable == 1 else '' }} everything except the amount condition
+                {% for label, n in ft.missing.items() %}
+                    ({{ label }}: {{ '{:,}'.format(n) }} of them {{ 'has' if n == 1 else 'have' }} no value saved){{ ',' if not loop.last }}
+                {% endfor %}.
+                <div class="mt-2">
+                    {{ nav(url_for('retrieve.index', q=ft.query, relax=1), 'Show those %s record%s anyway' % ('{:,}'.format(ft.relaxable), '' if ft.relaxable == 1 else 's'), 'btn btn-sm btn-outline-secondary') }}
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-secondary mb-0">
+                No saved records match <strong>{{ ft.query }}</strong>.
+                Check the spelling, use fewer words, or end a word with <code>*</code>.
+            </div>
+        {% endif %}
+    {% else %}
+    {% if ft.notice %}<div class="alert alert-info py-2">{{ ft.notice }}</div>{% endif %}
+    {% if ft.relaxed %}
+        <div class="alert alert-warning py-2">
+            Showing records that match everything <em>except</em> the amount condition, because none has a
+            matching value saved. These do not meet that condition.
+        </div>
+    {% endif %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+        <div><strong>{{ '{:,}'.format(ft.total) }}</strong> matching record{{ '' if ft.total == 1 else 's' }}</div>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('retrieve.fulltext_download', q=ft.query, relax=relax_arg) }}">Download all as CSV</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Facility</th><th>State</th><th>County</th><th>Unit</th>
+                    <th>Primary fuel</th><th>Year</th>
+                    <th class="text-end">CO₂ (tons)</th><th class="text-end">SO₂ (tons)</th><th class="text-end">NOx (tons)</th>
+                    <th>Dataset</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in ft.rows %}
+                    <tr>
+                        <td><a href="{{ url_for('details.unit', facility_id=r.facility_id, unit_id=r.unit_id) }}">{{ r.facility_name }}</a>
+                            <span class="text-body-secondary small">#{{ r.facility_id }}</span></td>
+                        <td>{{ r.state }}</td>
+                        <td>{{ r.county or '' }}</td>
+                        <td>{{ r.unit_id }}</td>
+                        <td>{{ r.primary_fuel or '' }}</td>
+                        <td>{{ r.year }}</td>
+                        {% for value in (r.co2_mass, r.so2_mass, r.nox_mass) %}
+                            <td class="text-end">{{ '{:,.1f}'.format(value) if value is not none else '—' }}</td>
+                        {% endfor %}
+                        <td><a href="{{ url_for('explore.dataset_detail', dataset_id=r.dataset_id) }}">{{ r.dataset_name }}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <nav>
+        <ul class="pagination mb-0">
+            <li class="page-item {{ 'disabled' if ft.page <= 1 }}">{{ nav(url_for('retrieve.index', q=ft.query, relax=relax_arg, page=ft.page - 1), 'Prev', 'page-link') }}</li>
+            <li class="page-item disabled"><span class="page-link">Page {{ ft.page }} of {{ ft.pages }}</span></li>
+            <li class="page-item {{ 'disabled' if ft.page >= ft.pages }}">{{ nav(url_for('retrieve.index', q=ft.query, relax=relax_arg, page=ft.page + 1), 'Next', 'page-link') }}</li>
+        </ul>
+    </nav>
+{% endif %}
+{% endif %}

@@ -280,6 +280,7 @@ def retrieve_data():
         attributes = client.get_facility_attributes(years, **filters)
         annual = _keep_only_filtered_units(annual, attributes, filters)
     except Exception as e:
+        print(e)
         return render_template(
             "fragments/retrieve_status.html",
             error=f"The EPA request failed ({type(e).__name__}). Check the filters and try again.",

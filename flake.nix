@@ -70,6 +70,7 @@
               numpy
               requests
               pydantic
+              whoosh
             ])
             ++ [
               self.formatter.${system}

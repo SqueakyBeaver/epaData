@@ -17,7 +17,8 @@ class CAMPDClient:
         self.api_key = str(getenv("CAMPD_API_KEY"))
 
         if not self.api_key:
-            raise ValueError("No CAMPD_API_KEY found in environment variables or .env")
+            raise ValueError(
+                "No CAMPD_API_KEY found in environment variables or .env")
 
     def send_request(
         self,
@@ -45,9 +46,20 @@ class CAMPDClient:
         )
 
         if not resp.ok:
-            raise RuntimeError(f"CAMPD request failed ({resp.status_code}): {resp.text[:300]}")
+            raise RuntimeError(
+                f"CAMPD request failed ({resp.status_code}): {resp.text[:300]}"
+            )
 
-        return resp.json()["items"]
+        resp_json = resp.json()
+
+        if isinstance(resp_json, list):
+            return resp_json
+        elif isinstance(resp_json, dict):
+            return resp_json["items"]
+        else:
+            print(
+                f"Got response JSON of type {type(resp_json)} for request to {endpoint}. Returning as is I guess")
+            return resp_json
 
     def get_state_codes(self) -> Sequence[StateOrTerritory]:
         """
@@ -63,7 +75,8 @@ class CAMPDClient:
 
         return [
             StateOrTerritory(
-                code=i["stateCode"], name=i["stateName"], epa_region=int(i["epaRegion"])
+                code=i["stateCode"], name=i["stateName"], epa_region=int(
+                    i["epaRegion"])
             )
             for i in self.send_request(
                 endpoint="master-data-mgmt/state-codes",
@@ -142,10 +155,11 @@ class CAMPDClient:
         NOTE: This returns A LOT of data.
         """
         if isinstance(year, tuple):
-            year = "|".join(str(i) for i in range(int(year[0]), int(year[1]) + 1))
+            year = "|".join(str(i)
+                            for i in range(int(year[0]), int(year[1]) + 1))
 
         res = self.send_request(
-            endpoint="facilities-mgmt/facilities/attributes/applicable",
+            endpoint="streaming-services/facilities/attributes",
             year=year,
         )
         return res
@@ -157,12 +171,14 @@ class CAMPDClient:
         Get a list of facility codes and names that fulfill the given filters
         NOTE: the filters column names MUST be in camelCase i.e. stateCode="KY"
         """
-        attrs = pd.json_normalize(self._get_facility_attributes_for_year(years))
+        attrs = pd.json_normalize(
+            self._get_facility_attributes_for_year(years))
         facilities = pd.json_normalize(self.get_facilities())
 
         mask = pd.Series(True, index=facilities.index)
 
-        mask &= facilities["facilityId"].isin(attrs["facilityId"].drop_duplicates())
+        mask &= facilities["facilityId"].isin(
+            attrs["facilityId"].drop_duplicates())
 
         for column, value in filters.items():
             mask &= facilities[column].eq(value)
@@ -171,13 +187,6 @@ class CAMPDClient:
             mask,
             ["facilityId", "facilityName"],
         ]
-
-    def get_facility_emissions_hourly(
-        self, facility_id: int, start_date: date, end_date: date
-    ):
-        # TODO I think he wants this information... ugh
-        # https://api.epa.gov/easey/emissions-mgmt/emissions/apportioned/hourly?stateCode=KY&unitFuelType=Coal&beginDate=2025-09-28&endDate=2025-10-31&operatingHoursOnly=true&page=1&perPage=5
-        pass
 
     def get_facility_data(
         self,
@@ -195,7 +204,7 @@ class CAMPDClient:
                 expanded.add(int(start))
         years = "|".join(str(y) for y in sorted(expanded))
         resp = self.send_request(
-            "facilities-mgmt/facilities/attributes",
+            "streaming-services/facilities/attributes",
             year=years,
             facilityId=facility_id,
             stateCode=state_code,
@@ -212,7 +221,8 @@ class CAMPDClient:
         """Ask for page 1, 2, 3 ... until the API returns an empty page."""
         rows, previous = [], None
         for page in range(1, 1001):  # hard stop so a misbehaving API can't loop forever
-            batch = self.send_request(endpoint, page=page, perPage=per_page, **params)
+            batch = self.send_request(
+                endpoint, page=page, perPage=per_page, **params)
             if not batch or batch == previous:
                 break
             rows.extend(batch)
@@ -222,9 +232,16 @@ class CAMPDClient:
     # CHANGED: both methods now take unit_type, control_technology and source_category too.
     # The EPA wants their full descriptions, e.g. "Combustion turbine", "Wet Limestone",
     # "Electric Utility" (several could be joined with "|").
+
     def get_annual_emissions(
-        self, years, state_code=None, facility_id=None, fuel_code=None,
-        unit_type=None, control_technology=None, source_category=None,
+        self,
+        years,
+        state_code=None,
+        facility_id=None,
+        fuel_code=None,
+        unit_type=None,
+        control_technology=None,
+        source_category=None,
     ):
         """One dict per unit per year, WITH emissions numbers. `years` is a list of ints.
 
@@ -233,24 +250,38 @@ class CAMPDClient:
         """
         rows = []
         for year in years:
-            rows += self._get_all_pages(
-                "emissions-mgmt/emissions/apportioned/annual",
-                year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
-                unitType=unit_type, controlTechnologies=control_technology,
+            rows += self.send_request(
+                "streaming-services/emissions/apportioned/annual",
+                year=year,
+                stateCode=state_code,
+                facilityId=facility_id,
+                unitFuelType=fuel_code,
+                unitType=unit_type,
+                controlTechnologies=control_technology,
             )
         return rows
 
     def get_facility_attributes(
-        self, years, state_code=None, facility_id=None, fuel_code=None,
-        unit_type=None, control_technology=None, source_category=None,
+        self,
+        years,
+        state_code=None,
+        facility_id=None,
+        fuel_code=None,
+        unit_type=None,
+        control_technology=None,
+        source_category=None,
     ):
         """One dict per unit per year, WITH county / lat / long / operation date."""
         rows = []
         for year in years:
-            rows += self._get_all_pages(
-                "facilities-mgmt/facilities/attributes",
-                year=year, stateCode=state_code, facilityId=facility_id, unitFuelType=fuel_code,
-                unitType=unit_type, controlTechnologies=control_technology,
+            rows += self.send_request(
+                "streaming-services/facilities/attributes",
+                year=year,
+                stateCode=state_code,
+                facilityId=facility_id,
+                unitFuelType=fuel_code,
+                unitType=unit_type,
+                controlTechnologies=control_technology,
                 sourceCategory=source_category,
             )
         return rows

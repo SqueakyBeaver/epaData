@@ -31,6 +31,7 @@ from whoosh.query import And, NumericRange, Or, Term
 
 from epadata.db import Session
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit
+from epadata import ranking  # NEW: Top-N / Bottom-N, used when the sentence asks for one
 from epadata.nlsearch import METRICS, STATE_NAMES, interpret  # NEW: sentence -> conditions
 
 log = logging.getLogger(__name__)
@@ -355,9 +356,23 @@ def search(
     text = (text or "").strip()[:MAX_QUERY_LENGTH]
     out = dict(
         query=text, rows=[], total=0, page=1, pages=1, notice=None, error=None,
-        understood=[], relaxable=None, missing={}, relaxed=False,
+        understood=[], relaxable=None, missing={}, relaxed=False, ranking=None,
     )
     if not text:
+        return out
+
+    # NEW: "top 10 facilities by CO2 in 2025" is a ranking, answered by ranking.py from the database.
+    # `ranking` in the result holds that answer (same shape as the Dataset Explorer's ranking panel).
+    try:
+        asked = interpret(text)
+    except Exception:
+        asked = None
+    if asked is not None and asked.ranking:
+        out["understood"] = asked.chips()
+        out["ranking"] = ranking.rank(
+            _ranking_args(asked), page=max(page, 1), per_page=per_page
+        )
+        out["total"] = out["ranking"]["total"]
         return out
 
     ensure_index()
@@ -403,6 +418,27 @@ def search(
             }
         out["rows"] = [found[i] for i in ids if i in found]  # keep Whoosh's order
     return out
+
+
+def _ranking_args(understood) -> dict:
+    """NEW: the sentence's filters in the form ranking.rank() takes (same as the explorer's URL)."""
+    r = understood.ranking
+    years = understood.years
+    if len(years) > 1 and years[-1] - years[0] + 1 == len(years):
+        years_text = f"{years[0]}-{years[-1]}"
+    else:
+        years_text = ",".join(map(str, years))
+    return {
+        "rank_by": r.metric,
+        "dir": "desc" if r.descending else "asc",
+        "n": r.n,
+        "level": r.level,
+        "group": "state" if r.per_state else "",
+        "years": years_text,
+        "state": ",".join(understood.states),
+        "fuel": understood.fuels[0] if understood.fuels else "",
+        "facility": understood.words,  # whatever is left over is taken as part of a facility name
+    }
 
 
 def _plain(ix, text, page, per_page, out):

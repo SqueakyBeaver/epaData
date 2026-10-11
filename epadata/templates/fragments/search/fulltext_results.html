@@ -16,7 +16,19 @@
             {% for chip in ft.understood %}<span class="badge text-bg-secondary fw-normal">{{ chip }}</span> {% endfor %}
         </div>
     {% endif %}
-    {% if ft.total == 0 %}
+    {% if ft.ranking %}
+        {# A "top 10 ..." sentence: the table comes from the ranking search, the same one the
+           Dataset Explorer shows. Paging stays inside this box. #}
+        {% set rk = ft.ranking %}
+        {% set rank_target = '#fulltext-results' %}
+        {% set rank_push = 'false' %}
+        {% include "fragments/search/rank_results.html" %}
+        {% if not rk.error %}
+            <p class="small mt-2 mb-0">
+                <a href="{{ url_for('explore.dataset_explorer', **rk.args) }}#rank-search">Open this ranking on the Dataset Explorer page</a>
+            </p>
+        {% endif %}
+    {% elif ft.total == 0 %}
         {% if ft.relaxable %}
             <div class="alert alert-secondary mb-0">
                 No saved record meets every condition.

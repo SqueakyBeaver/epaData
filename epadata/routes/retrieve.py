@@ -1,7 +1,7 @@
 from datetime import datetime  # NEW: names each retrieval
 
 import pandas as pd
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, redirect, render_template, request, url_for
 from sqlalchemy import select
 
 from epadata import search as fulltext  # full-text search (Whoosh)
@@ -37,6 +37,8 @@ def fulltext_download():
     ft = fulltext.search(
         request.args.get("q", ""), per_page=None, relax=request.args.get("relax") == "1"
     )
+    if ft["ranking"]:  # NEW: a "top 10 ..." sentence downloads the ranking, not a text search
+        return redirect(url_for("explore.rank_download", **ft["ranking"]["args"]))
     columns = {
         "facility_id": "Facility ID",
         "facility_name": "Facility Name",

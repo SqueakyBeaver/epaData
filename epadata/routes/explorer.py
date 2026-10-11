@@ -6,6 +6,7 @@ from flask import Blueprint, Response, current_app, render_template, request, ur
 from sqlalchemy import func, select
 
 
+from epadata import ranking  # NEW: Top-N / Bottom-N search
 from epadata.campd import CAMPDClient
 from epadata.db import Session
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit
@@ -77,6 +78,21 @@ RECORD_SORTS = {
 @bp.get("/")
 def dataset_explorer():
     """Browse all datasets persisted in the application database via DataTables."""
+    # NEW: "?rank_by=..." runs the Top-N / Bottom-N search below the dataset cards. htmx gets just
+    # the results; a reload, a shared link or the back button gets the whole page.
+    rk = None
+    if request.args.get("rank_by") is not None:
+        rk = ranking.rank(request.args, page=request.args.get("page", 1, type=int))
+        if wants_fragment():
+            # embed=1: the page link was clicked inside the full-text search box on the retrieval page
+            embedded = request.args.get("embed") == "1"
+            return render_template(
+                "fragments/search/rank_results.html",
+                rk=rk,
+                rank_target="#fulltext-results" if embedded else "#rank-results",
+                rank_push="false" if embedded else "true",
+            )
+
     with Session() as session:
         query = select(Dataset).order_by(
             Dataset.retrieval_date.desc(), Dataset.id.desc()
@@ -112,6 +128,98 @@ def dataset_explorer():
     return render_template(
         "explore.html",
         dataset_rows=dataset_rows,
+        rk=rk,  # NEW: the ranking result, or None
+        rank_metrics=ranking.METRICS,  # NEW: fills the "rank by" drop-down
+    )
+
+
+# NEW: the list page of all datasets (the Dataset Explorer cards do not scale to many datasets)
+LIST_PER_PAGE = 25
+LIST_SORTS = ("name", "source", "date", "records", "facilities")
+
+
+@bp.get("/datasets")
+def dataset_list():
+    """A searchable, sortable, paged table of every saved dataset."""
+    text = request.args.get("q", "").strip()[:100]
+    source = request.args.get("source", "").strip()
+    sort = request.args.get("sort", "date")
+    sort = sort if sort in LIST_SORTS else "date"
+    direction = "asc" if request.args.get("dir") == "asc" else "desc"
+    page = max(request.args.get("page", 1, type=int), 1)
+
+    records = func.count(AnnualRecord.id)
+    facilities = func.count(func.distinct(AnnualRecord.facility_id))
+    sort_column = {
+        "name": Dataset.name,
+        "source": Dataset.data_source,
+        "date": Dataset.retrieval_date,
+        "records": records,
+        "facilities": facilities,
+    }[sort]
+
+    where = []
+    if text:
+        # the user's own % and _ are matched literally
+        escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where.append(Dataset.name.ilike(f"%{escaped}%", escape="\\"))
+    if source:
+        where.append(Dataset.data_source == source)
+
+    with Session() as session:
+        total = session.scalar(select(func.count(Dataset.id)).where(*where)) or 0
+        pages = max(1, -(-total // LIST_PER_PAGE))
+        page = min(page, pages)
+        rows = session.execute(
+            select(Dataset, records.label("record_count"), facilities.label("facility_count"))
+            .outerjoin(AnnualRecord, AnnualRecord.dataset_id == Dataset.id)
+            .where(*where)
+            .group_by(Dataset.id)
+            .order_by(
+                sort_column.asc() if direction == "asc" else sort_column.desc(),
+                Dataset.id.desc(),
+            )
+            .limit(LIST_PER_PAGE)
+            .offset((page - 1) * LIST_PER_PAGE)
+        ).all()
+        sources = session.scalars(select(Dataset.data_source).distinct().order_by(Dataset.data_source)).all()
+        all_total = session.scalar(select(func.count(Dataset.id))) or 0
+
+    return render_template(
+        "datasets.html",
+        rows=rows,
+        total=total,
+        all_total=all_total,
+        page=page,
+        pages=pages,
+        sources=sources,
+        q=text,
+        source=source,
+        sort=sort,
+        direction=direction,
+    )
+
+
+@bp.get("/rank/download")
+def rank_download():
+    """NEW: every row of a Top-N / Bottom-N search (not just one page) as a CSV."""
+    rk = ranking.rank(request.args, per_page=None)
+    facility = rk["level"] == "facility"
+    columns = {
+        "rank": "Rank",
+        "facility_id": "Facility ID",
+        "facility_name": "Facility Name",
+        "state": "State",
+        **({} if facility else {"unit_id": "Unit ID", "unit_type": "Unit Type", "primary_fuel": "Primary Fuel"}),
+        "year": "Year",
+        **({"units_counted": "Units counted"} if facility else {}),
+        "value": f"{rk['metric_label']} ({rk['metric_unit']})",
+    }
+    df = pd.DataFrame(rk["rows"], columns=list(columns)).rename(columns=columns)
+    return Response(
+        df.to_csv(index=False),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=epadata_ranking.csv"},
     )
 
 
@@ -161,6 +269,13 @@ def dataset_detail(dataset_id: int):
         )
 
         df = pd.read_sql(query, session.connection())
+
+    # NEW: turn the two date columns into plain YYYY-MM-DD text before the table gets them.
+    # Without this, pandas' to_json writes dates as milliseconds since 1970 (e.g. 615254400000).
+    # Blank dates stay blank.
+    for date_col in ("Operating Date", "Retirement Date"):
+        if date_col in df.columns:
+            df[date_col] = pd.to_datetime(df[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
 
     return render_template(
         "dataset_detail.html",

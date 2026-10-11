@@ -64,7 +64,8 @@ _STOP = set(
     "for with that which who have has having where whose what are is was were be been and "
     "to by from than units unit emissions emission annual annually year years during using "
     "burning fired fueled tons ton short per their its there please can you i want need "
-    "looking look".split()
+    "looking look top bottom highest lowest largest smallest biggest most least fewest "
+    "emitting emitter emitters generating producing producers ranked rank each every state".split()
 )
 
 _MULTIPLIERS = {"thousand": 1e3, "k": 1e3, "million": 1e6, "billion": 1e9}
@@ -133,6 +134,96 @@ _YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 _ADVANCED = re.compile(r'["\[\]*~:]|\b(?:OR|AND|NOT)\b')
 
 
+# ---- "top 10 facilities by CO2", "10 units with the lowest SO2" -------------------------
+
+# words people use for a measurement when ranking (the amounts in METRICS work too)
+_RANK_WORDS = {
+    **{w: f for f, (_, words, _) in METRICS.items() for w in words},
+    "gross generation": "gross_load", "electricity generation": "gross_load",
+    "generation": "gross_load", "gross load": "gross_load",
+}
+_RANK_METRIC = re.compile(
+    r"\b(" + "|".join(sorted(map(re.escape, _RANK_WORDS), key=len, reverse=True)) + r")\b"
+)
+_HIGH = {"top", "highest", "largest", "biggest", "most"}
+_DIR = r"top|bottom|highest|lowest|largest|biggest|smallest|most|least|fewest"
+# "10 units with the lowest SO2": the number comes first
+_N_FIRST = re.compile(
+    rf"\b(?P<n>\d{{1,4}})\s+(?:[a-z-]+\s+){{0,3}}?(?:(?:with|having|that\s+have)\s+the\s+)?(?P<dir>{_DIR})\b"
+)
+# "top 10 facilities", "lowest 10 units", or just "top"
+_DIR_FIRST = re.compile(rf"\b(?P<dir>{_DIR})(?:\s+(?P<n>\d{{1,4}})\b)?")
+_EACH_STATE = re.compile(r"\b(?:(?:in|for|per|by|within)\s+)?(?:each|every)\s+state\b|\bper\s+state\b|\bby\s+state\b")
+_UNIT_WORD = re.compile(r"\b(?:units?|boilers?|generators?)\b")
+_FACILITY_WORD = re.compile(r"\b(?:facilit(?:y|ies)|plants?|power\s+stations?|stations?)\b")
+
+
+@dataclass
+class Ranking:
+    """A Top-N / Bottom-N request: the N highest or lowest units or facilities for one measurement."""
+
+    metric: str
+    descending: bool = True
+    n: int = 10
+    level: str = "unit"  # "unit" or "facility"
+    per_state: bool = False
+
+    def describe(self) -> str:
+        what = "facilit" + ("y" if self.n == 1 else "ies") if self.level == "facility" else ("unit" if self.n == 1 else "units")
+        where = " in each state" if self.per_state else ""
+        return f"{'Top' if self.descending else 'Bottom'} {self.n} {what}{where} by {METRICS[self.metric][0]}"
+
+
+def _cut(text: str, *spans) -> str:
+    """Remove the given (start, end) pieces from text."""
+    for start, end in sorted(spans, reverse=True):
+        text = text[:start] + " " + text[end:]
+    return text
+
+
+def _take_ranking(text: str):
+    """Pull out a Top-N / Bottom-N request. Returns (rest of the text, Ranking or None).
+
+    It needs a direction word (top, bottom, highest, lowest ...) AND a measurement (CO2, gross
+    generation ...), so ordinary searches that happen to contain "top" are left alone.
+    """
+    metric = _RANK_METRIC.search(text)
+    if not metric:
+        return text, None
+    spans = [metric.span()]
+    match = _N_FIRST.search(text)
+    n = direction = None
+    if match:
+        n, direction = int(match["n"]), match["dir"]
+        spans += [match.span("n"), match.span("dir")]
+    else:
+        match = _DIR_FIRST.search(text)
+        if not match:
+            return text, None
+        direction = match["dir"]
+        spans.append(match.span("dir"))
+        if match["n"]:
+            n = int(match["n"])
+            spans.append(match.span("n"))
+    ranking = Ranking(metric=_RANK_WORDS[metric[1]], descending=direction in _HIGH)
+
+    for pattern in (_EACH_STATE,):
+        found = pattern.search(text)
+        if found:
+            ranking.per_state = True
+            spans.append(found.span())
+    unit, facility = _UNIT_WORD.search(text), _FACILITY_WORD.search(text)
+    ranking.level = "unit" if unit or not facility else "facility"
+    for word in (unit, facility):
+        if word:
+            spans.append(word.span())
+    if n is None:  # "top CO2 emitting facility in each state" means one; "top CO2 facilities", ten
+        singular = re.search(r"\b(?:facility|unit|plant|station)\b", text)
+        n = 1 if singular else 10
+    ranking.n = min(max(n, 1), 1000)
+    return _cut(text, *spans), ranking
+
+
 @dataclass
 class Condition:
     """One numeric condition, e.g. CO2 mass > 500,000."""
@@ -159,14 +250,16 @@ class Understanding:
     years: list[int] = field(default_factory=list)
     numbers: list[Condition] = field(default_factory=list)
     words: str = ""  # everything else, matched as ordinary words
+    ranking: "Ranking | None" = None  # a Top-N / Bottom-N request, if the sentence is one
 
     @property
     def found(self) -> bool:
-        return bool(self.fuels or self.states or self.years or self.numbers)
+        return bool(self.fuels or self.states or self.years or self.numbers or self.ranking)
 
     def chips(self) -> list[str]:
         """Short labels shown to the user so they can see how the sentence was read."""
-        chips = [f"Fuel: {fuel}" for fuel in self.fuels]
+        chips = [f"Rank: {self.ranking.describe()}"] if self.ranking else []
+        chips += [f"Fuel: {fuel}" for fuel in self.fuels]
         chips += [f"State: {STATE_NAMES[code]} ({code})" for code in self.states]
         if self.years:
             first, last = self.years[0], self.years[-1]
@@ -274,6 +367,14 @@ def interpret(text: str) -> Understanding | None:
 
     text = _STATE_NAME.sub(state_name, text)
 
+    # A Top-N request is read first so its "10" is not mistaken for anything else. Mixing it with
+    # an amount condition ("... CO2 over 500,000") is not supported, so then it is read as a normal search.
+    ranked_text, result.ranking = _take_ranking(text)
+    if result.ranking:
+        if _take_numbers(text)[1]:
+            result.ranking = None
+        else:
+            text = ranked_text
     text, result.numbers = _take_numbers(text)
     text, result.years = _take_years(text)
 

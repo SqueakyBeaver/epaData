@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}All datasets{% endblock %}
+{% block header %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100">
+        <div>
+            <h1 class="mb-1">All datasets</h1>
+            <p class="text-body-secondary mb-0">Every dataset saved in the database, from uploads and EPA retrievals.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ url_for('explore.dataset_explorer') }}">Back to Dataset Explorer</a>
+    </div>
+{% endblock %}
+{% block content %}
+    {# A link to this same page with one setting changed. Sorting or filtering goes back to page 1. #}
+    {% macro sort_link(key, label, css='') -%}
+        {% set next_dir = 'asc' if sort == key and direction == 'desc' else 'desc' %}
+        <a class="text-reset text-decoration-none {{ css }}"
+           href="{{ url_for('explore.dataset_list', q=q or none, source=source or none, sort=key, dir=next_dir) }}">
+            {{ label }}{% if sort == key %} {{ '▲' if direction == 'asc' else '▼' }}{% endif %}
+        </a>
+    {%- endmacro %}
+
+    <section class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form class="row g-2 align-items-end mb-3" method="get" action="{{ url_for('explore.dataset_list') }}">
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="ds-q">Name contains</label>
+                    <input type="search" class="form-control" id="ds-q" name="q" value="{{ q }}" maxlength="100" />
+                </div>
+                <div class="col-8 col-md-4">
+                    <label class="form-label" for="ds-source">Source</label>
+                    <select class="form-select" id="ds-source" name="source">
+                        <option value="">All sources</option>
+                        {% for s in sources %}
+                            <option value="{{ s }}" {{ 'selected' if s == source }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <input type="hidden" name="sort" value="{{ sort }}" />
+                    <input type="hidden" name="dir" value="{{ direction }}" />
+                    <button class="btn btn-primary" type="submit">Filter</button>
+                    {% if q or source %}
+                        <a class="btn btn-link" href="{{ url_for('explore.dataset_list') }}">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <p class="text-body-secondary small">
+                {% if q or source %}{{ '{:,}'.format(total) }} of {{ '{:,}'.format(all_total) }} datasets{% else %}{{ '{:,}'.format(total) }} dataset{{ '' if total == 1 else 's' }}{% endif %}
+            </p>
+
+            {% if rows %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>{{ sort_link('name', 'Name') }}</th>
+                                <th>{{ sort_link('source', 'Source') }}</th>
+                                <th>{{ sort_link('date', 'Date') }}</th>
+                                <th>Years</th>
+                                <th class="text-end">{{ sort_link('records', 'Records') }}</th>
+                                <th class="text-end">{{ sort_link('facilities', 'Facilities') }}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dataset, record_count, facility_count in rows %}
+                                <tr>
+                                    <td><a href="{{ url_for('explore.dataset_detail', dataset_id=dataset.id) }}">{{ dataset.name }}</a></td>
+                                    <td>{{ dataset.data_source }}</td>
+                                    <td class="text-nowrap">{{ dataset.retrieval_date.strftime("%Y-%m-%d %H:%M") if dataset.retrieval_date else '—' }}</td>
+                                    <td>{{ dataset.reporting_years|join(", ") if dataset.reporting_years else '—' }}</td>
+                                    <td class="text-end">{{ '{:,}'.format(record_count) }}</td>
+                                    <td class="text-end">{{ '{:,}'.format(facility_count) }}</td>
+                                    <td class="text-nowrap text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('explore.dataset_detail', dataset_id=dataset.id) }}">View</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id) }}">CSV</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <nav>
+                    <ul class="pagination mb-0">
+                        <li class="page-item {{ 'disabled' if page <= 1 }}">
+                            <a class="page-link" href="{{ url_for('explore.dataset_list', q=q or none, source=source or none, sort=sort, dir=direction, page=page - 1) }}">Prev</a>
+                        </li>
+                        <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ pages }}</span></li>
+                        <li class="page-item {{ 'disabled' if page >= pages }}">
+                            <a class="page-link" href="{{ url_for('explore.dataset_list', q=q or none, source=source or none, sort=sort, dir=direction, page=page + 1) }}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="mb-1">No datasets match.</p>
+                    <p class="text-body-secondary small mb-0">Change the filters, or upload or retrieve some data.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

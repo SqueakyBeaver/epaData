@@ -1,0 +1,139 @@
+{# NEW: Top-N / Bottom-N search form, shown on the Dataset Explorer page below the dataset cards.
+   Needs `rank_metrics` (the measurements that can be ranked) and, after a search, `rk`. #}
+{% set v = rk.args if rk is defined and rk else {} %}
+{% set examples = [
+    ("Top 10 facilities by CO₂", {"rank_by": "co2_mass", "dir": "desc", "n": 10, "level": "facility"}),
+    ("Top 20 units by gross load", {"rank_by": "gross_load", "dir": "desc", "n": 20}),
+    ("Top 10 units by heat input", {"rank_by": "heat_input", "dir": "desc", "n": 10}),
+    ("Top 10 coal units in Kentucky", {"rank_by": "co2_mass", "dir": "desc", "n": 10, "state": "KY", "fuel": "coal"}),
+    ("10 units with the lowest SO₂", {"rank_by": "so2_mass", "dir": "asc", "n": 10}),
+    ("Top CO₂ facility in each state", {"rank_by": "co2_mass", "dir": "desc", "n": 1, "level": "facility", "group": "state"}),
+] %}
+<section id="rank-search" class="card shadow-sm mb-4">
+    <div class="card-body">
+        <h2 class="h5">Rank units or facilities</h2>
+        <p class="mb-2">
+            Find the highest or lowest for one measurement: the 10 facilities with the most CO₂, the 20 units with the
+            highest gross load, the 5 units with the lowest SO₂. It searches everything saved in the database.
+        </p>
+        <p class="text-body-secondary small mb-3">
+            Units are ranked one by one for each year. Facilities add their units together, separately for each year,
+            so pick a year if you want each facility only once. The filters narrow the records before ranking and match
+            part of the text. Records with no value for the measurement are left out (never counted as zero), and the
+            result tells you how many. If a unit and year was saved more than once, only the newest is used.
+            You can also type a sentence like <em>top 10 facilities by CO₂ in 2025</em> in the full-text search on the
+            EPA Retrieval page.
+        </p>
+        <form id="rank-form"
+              class="row g-3"
+              action="{{ url_for('explore.dataset_explorer') }}#rank-search"
+              method="get"
+              hx-get="{{ url_for('explore.dataset_explorer') }}"
+              hx-target="#rank-results"
+              hx-push-url="true"
+              hx-indicator="#rank-spinner">
+            <div class="col-6 col-md-2">
+                <label class="form-label" for="rank-dir">Show</label>
+                <select class="form-select" id="rank-dir" name="dir">
+                    <option value="desc" {{ 'selected' if v.get('dir', 'desc') == 'desc' }}>Top (highest)</option>
+                    <option value="asc" {{ 'selected' if v.get('dir') == 'asc' }}>Bottom (lowest)</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label" for="rank-n">How many (N)</label>
+                <input type="number" min="1" max="1000" class="form-control" id="rank-n" name="n"
+                       value="{{ v.get('n', 10) }}" required />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="rank-level">Rank</label>
+                <select class="form-select" id="rank-level" name="level">
+                    <option value="unit" {{ 'selected' if v.get('level', 'unit') == 'unit' }}>Units</option>
+                    <option value="facility" {{ 'selected' if v.get('level') == 'facility' }}>Facilities (their units added together)</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-5">
+                <label class="form-label" for="rank-by">By</label>
+                <select class="form-select" id="rank-by" name="rank_by" required>
+                    <option value="">Choose a measurement</option>
+                    {% for key, m in rank_metrics.items() %}
+                        <option value="{{ key }}" {{ 'selected' if v.get('rank_by') == key }}>{{ m[0] }} ({{ m[1] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12"><span class="text-body-secondary small">Optional filters (leave blank for all data)</span></div>
+            <div class="col-6 col-md-2">
+                <label class="form-label" for="rank-years">Year(s)</label>
+                <input type="text" class="form-control" id="rank-years" name="years"
+                       placeholder="2025 or 2019-2022" value="{{ v.get('years', '') }}" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label" for="rank-state">State(s)</label>
+                <input type="text" class="form-control" id="rank-state" name="state"
+                       placeholder="KY or KY,OH" value="{{ v.get('state', '') }}" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label" for="rank-fuel">Primary fuel</label>
+                <input type="text" class="form-control" id="rank-fuel" name="fuel"
+                       placeholder="coal" value="{{ v.get('fuel', '') }}" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label" for="rank-unit-type">Unit type</label>
+                <input type="text" class="form-control" id="rank-unit-type" name="unit_type"
+                       placeholder="combustion turbine" value="{{ v.get('unit_type', '') }}" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" for="rank-facility">Facility name or ID</label>
+                <input type="text" class="form-control" id="rank-facility" name="facility"
+                       value="{{ v.get('facility', '') }}" />
+            </div>
+
+            <div class="col-12 d-flex flex-wrap align-items-center gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="rank-group" name="group" value="state"
+                           {{ 'checked' if v.get('group') == 'state' }} />
+                    <label class="form-check-label" for="rank-group">Rank within each state (N per state)</label>
+                </div>
+                <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                    <span id="rank-spinner" class="spinner-border spinner-border-sm htmx-indicator"
+                          role="status" aria-hidden="true"></span>
+                    <span>Rank</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-3">
+            <div class="small text-body-secondary mb-1">Click an example to try it</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for label, params in examples %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            data-params='{{ params|tojson }}'
+                            onclick="rankFill(this)">{{ label }}</button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="rank-results" class="mt-3">
+            {% if rk is defined and rk %}{% include "fragments/search/rank_results.html" %}{% endif %}
+        </div>
+    </div>
+</section>
+<script>
+    // An example button fills in the form (blank for anything it does not set), then runs the search.
+    function rankFill(button) {
+        var params = JSON.parse(button.dataset.params);
+        var defaults = {n: '10', dir: 'desc', level: 'unit'};  // what a blank means for these fields
+        var form = document.getElementById('rank-form');
+        Array.prototype.forEach.call(form.elements, function (el) {
+            if (!el.name) { return; }
+            var value = params[el.name];
+            if (el.type === 'checkbox') { el.checked = (String(value) === el.value); }
+            else if (el.tagName !== 'BUTTON') { el.value = (value === undefined) ? (defaults[el.name] || '') : value; }
+        });
+        form.requestSubmit();
+    }
+    // A shared link or reload that already has results: scroll down to them.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.querySelector('#rank-results > *')) { document.getElementById('rank-search').scrollIntoView(); }
+    });
+</script>

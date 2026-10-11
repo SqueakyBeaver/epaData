@@ -9,13 +9,19 @@
         <div class="d-flex gap-2">
             <a href="{{ url_for('explore.dataset_explorer') }}"
                class="btn btn-outline-secondary">Back to Datasets</a>
-            <a href="{{ url_for('explore.dataset_download', dataset_id=dataset.id) }}"
-               class="btn btn-outline-primary">Download Whole Dataset</a>
+            {#  a small menu to choose CSV or Excel #}
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download Whole Dataset</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id, format='csv') }}">CSV file (.csv)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id, format='xlsx') }}">Excel file (.xlsx)</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 {% endblock %}
 {% block content %}
-    {# NEW: how this dataset was retrieved (EPA retrievals only; uploads have no query) #}
+    {#  how this dataset was retrieved (EPA retrievals only; uploads have no query) #}
     {% if dataset.query_params %}
         <section class="card shadow-sm mb-3">
             <div class="card-body">
@@ -32,7 +38,7 @@
             </div>
         </section>
     {% endif %}
-    {# NEW: the data-quality report saved at upload time (rejected rows and why) #}
+    {# the data-quality report saved at upload time (rejected rows and why) #}
     {% if dataset.notes %}
         <details class="card shadow-sm">
             <summary class="card-body fw-semibold">Data-quality report for this dataset</summary>

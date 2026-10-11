@@ -9,6 +9,7 @@ from epadata.campd import CAMPDClient
 from epadata.db import Session  # NEW: retrieved data is now saved in the database
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit  # NEW
 from epadata.importer import import_annual_data, parse_years  # NEW
+from epadata.routes.utils import table_download  # NEW: CSV / Excel downloads
 
 bp = Blueprint("retrieve", __name__, url_prefix="/retrieve")
 
@@ -38,7 +39,13 @@ def fulltext_download():
         request.args.get("q", ""), per_page=None, relax=request.args.get("relax") == "1"
     )
     if ft["ranking"]:  # NEW: a "top 10 ..." sentence downloads the ranking, not a text search
-        return redirect(url_for("explore.rank_download", **ft["ranking"]["args"]))
+        return redirect(
+            url_for(
+                "explore.rank_download",
+                format=request.args.get("format", "csv"),  # keep the chosen file type
+                **ft["ranking"]["args"],
+            )
+        )
     columns = {
         "facility_id": "Facility ID",
         "facility_name": "Facility Name",
@@ -57,11 +64,7 @@ def fulltext_download():
         "dataset_name": "Dataset",
     }
     df = pd.DataFrame(ft["rows"], columns=list(columns)).rename(columns=columns)
-    return Response(
-        df.to_csv(index=False),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=epadata_text_search.csv"},
-    )
+    return table_download(df, "epadata_text_search")  # CHANGED: CSV or Excel (?format=xlsx)
 
 
 # ---- the page and the filter form: unchanged except for the NEW lines in index() ----

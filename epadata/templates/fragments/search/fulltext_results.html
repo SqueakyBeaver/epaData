@@ -57,8 +57,14 @@
     {% endif %}
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
         <div><strong>{{ '{:,}'.format(ft.total) }}</strong> matching record{{ '' if ft.total == 1 else 's' }}</div>
-        <a class="btn btn-outline-secondary btn-sm"
-           href="{{ url_for('retrieve.fulltext_download', q=ft.query, relax=relax_arg) }}">Download all as CSV</a>
+        {#  choose CSV or Excel #}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download all</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ url_for('retrieve.fulltext_download', q=ft.query, relax=relax_arg, format='csv') }}">CSV file (.csv)</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('retrieve.fulltext_download', q=ft.query, relax=relax_arg, format='xlsx') }}">Excel file (.xlsx)</a></li>
+            </ul>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-striped table-hover table-sm align-middle">

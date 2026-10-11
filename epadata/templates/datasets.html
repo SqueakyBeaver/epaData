@@ -74,7 +74,8 @@
                                     <td class="text-end">{{ '{:,}'.format(facility_count) }}</td>
                                     <td class="text-nowrap text-end">
                                         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('explore.dataset_detail', dataset_id=dataset.id) }}">View</a>
-                                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id) }}">CSV</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id, format='csv') }}">CSV</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('explore.dataset_download', dataset_id=dataset.id, format='xlsx') }}">Excel</a>
                                     </td>
                                 </tr>
                             {% endfor %}

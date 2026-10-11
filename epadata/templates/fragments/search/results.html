@@ -1,4 +1,3 @@
-
 {# Results table + sorting + pagination + download.
    htmx swaps this into #output; a full page load includes it too. #}
 {% macro nav(href, label, css='') -%}
@@ -12,8 +11,14 @@
             <span class="badge text-bg-secondary ms-1">{{ k }}: {{ v }}</span>
         {% endfor %}
     </div>
-    <a class="btn btn-outline-secondary btn-sm"
-       href="{{ url_for('.campd_download', **args_no_page) }}">Download CSV</a>
+    {#  choose CSV or Excel #}
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ url_for('.campd_download', format='csv', **args_no_page) }}">CSV file (.csv)</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('.campd_download', format='xlsx', **args_no_page) }}">Excel file (.xlsx)</a></li>
+        </ul>
+    </div>
 </div>
 
 <div class="table-responsive">

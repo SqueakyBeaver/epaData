@@ -29,8 +29,14 @@
     {% else %}
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
             <div><strong>{{ '{:,}'.format(rk.total) }}</strong> row{{ '' if rk.total == 1 else 's' }}</div>
-            <a class="btn btn-outline-secondary btn-sm"
-               href="{{ url_for('explore.rank_download', **rk.args) }}">Download all as CSV</a>
+            {# choose CSV or Excel #}
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Download all</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ url_for('explore.rank_download', format='csv', **rk.args) }}">CSV file (.csv)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('explore.rank_download', format='xlsx', **rk.args) }}">Excel file (.xlsx)</a></li>
+                </ul>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-striped table-hover table-sm align-middle">

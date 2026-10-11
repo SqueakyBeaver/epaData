@@ -47,3 +47,178 @@
 
 /* trying to fix the whole page stretching sideways*/
 #content > * { min-width: 0;}
+
+/* ==========================================================================
+    simple light-green theme (third version: plain, white background, light greens only).
+   Bootstrap reads its colours from CSS variables, so overriding them here restyles the existing
+   buttons, links, badges, tables and forms without touching the templates.
+   To change the greens later, edit only the --epa-* colours in the first block.
+   ========================================================================== */
+:root {
+  --epa-leaf:  #a5d6a7;   /* navbar, footer, badges */
+  --epa-mid:   #81c784;   /* buttons, borders, lines */
+  --epa-soft:  #c8e6c9;   /* table headers, page title strip */
+  --epa-pale:  #e8f5e9;   /* hover rows, light fills */
+  --epa-link:  #2e7d32;   /* text links (green, dark enough to read on white) */
+  --epa-text:  #222222;
+
+  --bs-body-font-family: "Segoe UI", Verdana, Arial, sans-serif;
+  --bs-body-color: var(--epa-text);
+  --bs-body-bg: #ffffff;
+  --bs-primary: var(--epa-mid);
+  --bs-primary-rgb: 129, 199, 132;
+  --bs-link-color: var(--epa-link);
+  --bs-link-color-rgb: 46, 125, 50;
+  --bs-link-hover-color: #1b5e20;
+  --bs-link-hover-color-rgb: 27, 94, 32;
+  --bs-heading-color: var(--epa-text);
+  --bs-border-color: #cfd8cf;
+  --bs-focus-ring-color: rgba(129, 199, 132, 0.45);
+  --bs-border-radius: 0.25rem;
+  --bs-border-radius-lg: 0.3rem;
+}
+
+body { background-color: #fff; }
+
+/* ---- headings: Trebuchet MS (a common, friendly web font), plain dark text ---- */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-weight: 700;
+  color: var(--epa-text);
+}
+
+/* ---- navbar: light green, links always shown across the top ---- */
+.navbar, .navbar.bg-body-tertiary {
+  background-color: var(--epa-leaf) !important;
+  border-bottom: 2px solid var(--epa-mid);
+}
+.navbar .navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--epa-text);
+  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+.navbar .navbar-brand img { height: 36px; width: auto; }   /* your logo is shown at 36px tall */
+.navbar .nav-link { color: var(--epa-text); padding-inline: 0.8rem; }
+.navbar .nav-link:hover,
+.navbar .nav-link:focus { color: var(--epa-text); background-color: var(--epa-pale); border-radius: 0.25rem; }
+.navbar-nav { flex-wrap: wrap; }
+
+/* ---- page title area: just a heading with a green line under it ---- */
+header.row {
+  margin-top: 1.25rem;
+  padding: 0 0.75rem 0.6rem;
+  border-bottom: 2px solid var(--epa-mid);
+}
+header h1 { font-size: 1.9rem; }
+
+/* ---- buttons: light green with dark text ---- */
+.btn-primary, .btn-success {
+  --bs-btn-color: #1b1b1b;
+  --bs-btn-bg: var(--epa-mid);
+  --bs-btn-border-color: #66bb6a;
+  --bs-btn-hover-color: #1b1b1b;
+  --bs-btn-hover-bg: #66bb6a;
+  --bs-btn-hover-border-color: #4caf50;
+  --bs-btn-active-color: #1b1b1b;
+  --bs-btn-active-bg: #66bb6a;
+  --bs-btn-active-border-color: #4caf50;
+  --bs-btn-disabled-color: #555;
+  --bs-btn-disabled-bg: var(--epa-soft);
+  --bs-btn-disabled-border-color: var(--epa-soft);
+  --bs-btn-focus-shadow-rgb: 129, 199, 132;
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--epa-link);
+  --bs-btn-border-color: var(--epa-mid);
+  --bs-btn-hover-color: #1b1b1b;
+  --bs-btn-hover-bg: var(--epa-soft);
+  --bs-btn-hover-border-color: var(--epa-mid);
+  --bs-btn-active-color: #1b1b1b;
+  --bs-btn-active-bg: var(--epa-leaf);
+  --bs-btn-active-border-color: var(--epa-mid);
+  --bs-btn-focus-shadow-rgb: 129, 199, 132;
+}
+.btn-outline-secondary {
+  --bs-btn-color: #444;
+  --bs-btn-border-color: #aaa;
+  --bs-btn-hover-color: #1b1b1b;
+  --bs-btn-hover-bg: var(--epa-pale);
+  --bs-btn-hover-border-color: #aaa;
+  --bs-btn-active-color: #1b1b1b;
+  --bs-btn-active-bg: var(--epa-soft);
+}
+
+/* ---- forms ---- */
+.form-control:focus, .form-select:focus, .form-check-input:focus {
+  border-color: var(--epa-mid);
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+}
+.form-check-input:checked { background-color: var(--epa-mid); border-color: #66bb6a; }
+
+/* ---- cards and panels: plain white boxes with a thin border, no shadows ---- */
+.card, .border.rounded, .list-group-item { border-color: var(--bs-border-color); }
+.card { background-color: #fff; box-shadow: none !important; }
+.card-header { background-color: var(--epa-soft); color: var(--epa-text); font-weight: 600; }
+.border-primary-subtle { border-color: var(--bs-border-color) !important; }
+.dataset-card:hover { border-color: var(--epa-mid); background-color: var(--epa-pale); }
+.text-bg-primary { background-color: var(--epa-leaf) !important; color: #1b1b1b !important; }
+.text-bg-success { background-color: var(--epa-leaf) !important; color: #1b1b1b !important; }
+.text-bg-secondary { background-color: #e3e6e3 !important; color: #333 !important; }
+.bg-body-tertiary { background-color: var(--epa-pale) !important; }
+.alert-info { --bs-alert-bg: var(--epa-pale); --bs-alert-border-color: var(--epa-soft); --bs-alert-color: #1b3a1d; }
+.alert-success { --bs-alert-bg: var(--epa-soft); --bs-alert-border-color: var(--epa-mid); --bs-alert-color: #1b3a1d; }
+
+/* ---- tables (static tables and DataTables) ---- */
+.table { --bs-table-striped-bg: #f6faf6; --bs-table-hover-bg: var(--epa-pale); --bs-table-bg: #fff; --bs-table-border-color: #dde5dd; }
+.table > thead > tr > th {
+  background-color: var(--epa-soft);
+  color: var(--epa-text);
+  border-bottom: 2px solid var(--epa-mid);
+}
+.table a { color: var(--epa-link); }
+.page-link { color: var(--epa-link); }
+.page-link:hover { color: #1b5e20; background-color: var(--epa-pale); }
+.page-item.active .page-link { background-color: var(--epa-mid); border-color: #66bb6a; color: #1b1b1b; }
+
+/* ---- Choices.js multi-select tags: light green with dark text ---- */
+.choices__list--multiple .choices__item { background-color: var(--epa-leaf); color: #1b1b1b; border-color: var(--epa-mid); }
+.choices__list--multiple .choices__item.is-highlighted { background-color: var(--epa-mid); }
+
+/* ---- dataset carousel arrows: light green circles ---- */
+.carousel-control-prev, .carousel-control-next { width: 2.75rem; opacity: 1; }
+.carousel-control-prev-icon, .carousel-control-next-icon {
+  background-color: var(--epa-leaf);
+  border-radius: 50%;
+  background-size: 55%;
+  width: 2rem;
+  height: 2rem;
+  filter: invert(1);
+}
+
+/* ---- home page tiles (links to the four main pages) ---- */
+.home-tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.home-tile {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--epa-mid);
+  border-radius: var(--bs-border-radius);
+  color: var(--epa-text);
+  text-decoration: none;
+}
+.home-tile:hover { background: var(--epa-pale); color: var(--epa-text); }
+.home-tile strong { display: block; font-family: "Trebuchet MS", Verdana, sans-serif; color: var(--epa-link); }
+.home-tile span { font-size: 0.95rem; }
+
+/* ---- footer ---- */
+.site-footer {
+  margin-top: 3rem;
+  padding: 1rem 0;
+  background: var(--epa-leaf);
+  border-top: 2px solid var(--epa-mid);
+  font-size: 0.9rem;
+}
+.site-footer a { color: #1b5e20; }

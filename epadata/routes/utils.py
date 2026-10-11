@@ -1,7 +1,10 @@
+import io
 import json
+import re
 from typing import Literal, TypeAlias
 
-from flask import make_response
+import pandas as pd
+from flask import make_response, request
 from flask.wrappers import Response
 
 
@@ -33,3 +36,33 @@ def flash_message(
         }
     )
     return resp
+
+
+def table_download(df, base_name: str) -> Response:
+    """
+     send a DataFrame as a download. The format comes from the ?format= part of the link:
+    format=xlsx (or excel) gives an Excel file, anything else gives a CSV. Every download button on the
+    site goes through this one function, so they all offer the same two choices.
+    """
+    # keep the file name safe for the Content-Disposition header (no quotes, slashes or odd symbols)
+    base = re.sub(r"[^\w.\- ()=]+", "-", base_name).strip(" .-") or "epadata"
+    if request.args.get("format", "csv").lower() in ("xlsx", "excel"):
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Data")
+            # Text that starts with "=" would be run as a formula by Excel (uploaded names are not trusted),
+            # so every such cell is marked as plain text.
+            for row in writer.sheets["Data"].iter_rows():
+                for cell in row:
+                    if isinstance(cell.value, str) and cell.value[:1] in ("=", "+", "-", "@"):
+                        cell.data_type = "s"
+        return Response(
+            buf.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{base}.xlsx"'},
+        )
+    return Response(
+        df.to_csv(index=False),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{base}.csv"'},
+    )

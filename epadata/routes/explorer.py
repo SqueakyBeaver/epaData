@@ -10,6 +10,7 @@ from epadata import ranking  # NEW: Top-N / Bottom-N search
 from epadata.campd import CAMPDClient
 from epadata.db import Session
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit
+from epadata.routes.utils import table_download  # NEW: CSV / Excel downloads
 
 bp = Blueprint("explore", __name__, url_prefix="/explore")
 
@@ -216,11 +217,7 @@ def rank_download():
         "value": f"{rk['metric_label']} ({rk['metric_unit']})",
     }
     df = pd.DataFrame(rk["rows"], columns=list(columns)).rename(columns=columns)
-    return Response(
-        df.to_csv(index=False),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=epadata_ranking.csv"},
-    )
+    return table_download(df, "epadata_ranking")  # CHANGED: CSV or Excel (?format=xlsx)
 
 
 @bp.get("/dataset/<int:dataset_id>")
@@ -340,13 +337,8 @@ def dataset_download(dataset_id: int):
 
         df = pd.DataFrame(data_rows)
 
-    filename = f"dataset-{dataset_id}-{dataset.name}.csv".replace("/", "-")
-
-    return Response(
-        df.to_csv(index=False),
-        mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    # CHANGED: CSV or Excel (?format=xlsx); the helper adds the file extension
+    return table_download(df, f"dataset-{dataset_id}-{dataset.name}")
 
 
 def load_data():
@@ -515,8 +507,4 @@ def campd():
 @bp.get("/campd/download")
 def campd_download():
     df = search_dataframe(request.args)  # every matching row, not just one page
-    return Response(
-        df.to_csv(index=False),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=epadata_search.csv"},
-    )
+    return table_download(df, "epadata_search")  # CHANGED: CSV or Excel (?format=xlsx)

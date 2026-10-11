@@ -101,7 +101,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   font-weight: 700;
   font-size: 1.4rem;
 }
-.navbar .navbar-brand img { height: 36px; width: auto; }   /* your logo is shown at 36px tall */
+.navbar .navbar-brand img { height: 100px; width: auto; }   /* your logo is shown at 36px tall */
 .navbar .nav-link { color: var(--epa-text); padding-inline: 0.8rem; }
 .navbar .nav-link:hover,
 .navbar .nav-link:focus { color: var(--epa-text); background-color: var(--epa-pale); border-radius: 0.25rem; }

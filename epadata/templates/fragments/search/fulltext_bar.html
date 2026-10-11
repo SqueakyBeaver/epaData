@@ -1,86 +1,58 @@
 {# Full-text search box. Included at the bottom of retrieve.html, below the retrieval filters.
-   Needs `ft` (the search result) only when a search was already run. #}
-{% set examples = [
-    ("Find coal-fired units in Kentucky in 2025 with annual CO₂ emissions greater than 500,000 short tons", "A whole sentence"),
-    ("Top 10 facilities by CO₂ in 2025", "Top or bottom N"),
-    ("10 units with the lowest SO₂", ""),
-    ("natural gas units in Ohio between 2022 and 2024", ""),
-    ("SO2 below 100 tons since 2020", ""),
-    ("kentucky coal", ""),
-    ("\"E W Brown\"", "Quotes: words in this exact order"),
-    ("brow*", "* finishes a word"),
-    ("coal OR gas", "OR, NOT"),
-    ("state:KY year:[2020 TO 2025]", "field:value, [a TO b] for a range"),
-    ("shawnie~", "~ allows a spelling mistake"),
-] %}
-<section id="fulltext-search" class="card shadow-sm">
-    <div class="card-body">
-        <h2 class="h5">Full-text search</h2>
-        <p class="mb-2">
-            Searches everything saved in the database: uploaded files and data retrieved from the EPA.
-            Type a few keywords (a facility, county, state, fuel or year) or a whole question, for example
-            <em>coal-fired units in Kentucky in 2025 with CO₂ greater than 500,000 short tons</em> or
-            <em>top 10 facilities by CO₂</em>.
+   Needs `ft` (the search result) only when a search was already run.
+    plainer box (a bordered fieldset), normal-sized input, and the "click an example" buttons are gone.
+   One example sentence is shown as the placeholder text inside the search box instead. #}
+<section id="fulltext-search" class="mb-4">
+    <fieldset class="border rounded p-3">
+        <legend class="float-none w-auto px-2 fs-5">Full-text search</legend>
+        <p class="mb-1">
+            Search everything saved in the database, both uploaded files and data retrieved from the EPA.
+            Type keywords (a facility, county, state, fuel or year) or write a whole sentence.
         </p>
-        <p class="text-body-secondary small mb-3">
-            In a sentence it picks out the fuel, state, year or years, an amount limit on CO₂, SO₂, NOx, heat input,
-            gross load or operating hours (greater than, less than, at least, between), and top or bottom N.
-            It shows how it read your sentence. Everything else is matched as words, best match first.
-            A record with no value for an amount never matches a condition on that amount.
-            This search is separate from the retrieval filters above.
+        <p class="small text-body-secondary mb-3">
+            In a sentence it finds the fuel, state, year, an amount limit on CO2, SO2, NOx, heat input, gross load or
+            operating hours (greater than, less than, at least, between), and "top" or "bottom" N. A line above the
+            results shows how it read the sentence. Anything else is matched as words, best match first. A record with
+            no value for an amount never matches a condition on it. This is separate from the retrieval filters above.
         </p>
-        <form class="row g-2 align-items-center"
+        <form class="d-flex flex-wrap gap-2 align-items-end"
               action="{{ url_for('retrieve.index') }}"
               method="get"
               hx-get="{{ url_for('retrieve.index') }}"
               hx-target="#fulltext-results"
               hx-push-url="true"
               hx-indicator="#fulltext-spinner">
-            <div class="col">
-                <label class="visually-hidden" for="fulltext-q">Full-text search</label>
+            <div class="flex-grow-1">
+                <label class="form-label mb-1" for="fulltext-q">Search for</label>
                 <input type="search"
-                       class="form-control form-control-lg"
+                       class="form-control"
                        id="fulltext-q"
                        name="q"
                        maxlength="200"
                        autocomplete="off"
-                       placeholder="coal-fired units in Kentucky in 2025 with CO2 greater than 500,000"
+                       placeholder="e.g. top 10 facilities by CO2 in 2025"
                        value="{{ ft.query if ft is defined else '' }}" />
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary btn-lg d-flex align-items-center gap-2">
-                    <span id="fulltext-spinner"
-                          class="spinner-border spinner-border-sm htmx-indicator"
-                          role="status"
-                          aria-hidden="true"></span>
-                    <span>Search</span>
-                </button>
-            </div>
+            <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                <span id="fulltext-spinner"
+                      class="spinner-border spinner-border-sm htmx-indicator"
+                      role="status"
+                      aria-hidden="true"></span>
+                <span>Search</span>
+            </button>
         </form>
-
-        <div class="mt-3">
-            <div class="small text-body-secondary mb-1">Click an example to try it</div>
-            <div class="d-flex flex-wrap gap-2">
-                {% for text, hint in examples %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary text-start"
-                            data-q="{{ text }}"
-                            {% if hint %}title="{{ hint }}"{% endif %}
-                            onclick="document.getElementById('fulltext-q').value = this.dataset.q;
-                                     document.getElementById('fulltext-q').form.requestSubmit();">{{ text if text|length < 60 else 'Find coal-fired units in Kentucky in 2025 …' }}</button>
-                {% endfor %}
-            </div>
-            <div class="small text-body-secondary mt-2">
-                Fields for <code>field:value</code>: facility_name, state, county, unit_id, facility_id, unit_type,
-                primary_fuel, secondary_fuel, source_category, program_code, controls, year, dataset_name, and the
-                amounts co2_mass, so2_mass, nox_mass, heat_input, gross_load, operating_time.
-            </div>
-        </div>
+        <p class="small text-body-secondary mt-2 mb-0">
+            For exact searches use <code>field:value</code>, for example <code>state:KY</code> or
+            <code>year:[2020 TO 2025]</code>. Fields: facility_name, state, county, unit_id, facility_id, unit_type,
+            primary_fuel, secondary_fuel, source_category, program_code, controls, year, dataset_name, co2_mass,
+            so2_mass, nox_mass, heat_input, gross_load, operating_time. Put a phrase in quotes, add * to finish a
+            word, or use OR and NOT.
+        </p>
 
         <div id="fulltext-results" class="mt-3">
             {% if ft is defined %}{% include "fragments/search/fulltext_results.html" %}{% endif %}
         </div>
-    </div>
+    </fieldset>
 </section>
 <script>
     // When the page opens with a search already in the address (a shared link, a reload),

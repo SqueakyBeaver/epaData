@@ -19,7 +19,7 @@
 {% block header %}<h1 class="mx-auto">EPA Data Retrieval</h1>{% endblock %}
 {% block content %}
   <h2 class="h5 mb-0">Retrieve data from the EPA</h2>
-  <p class="text-body-secondary mb-0"><strong>Method:</strong> queries the EPA CAMPD service using the filters below.</p>
+  <p class="text-body-secondary mb-0">Queries the EPA CAMPD service using the filters below. </p>
   <form class="grid g-4"
         hx-post="{{ url_for('.retrieve_data') }}"
         hx-target="#output">
@@ -103,7 +103,7 @@
   <div class="container-lg">
     <output id="output"></output>
   </div>
-  {# CHANGED: the full-text search is now BELOW the retrieval form, because retrieving saves the
+  {#  the full-text search is now BELOW the retrieval form, because retrieving saves the
      data that this search looks through. It searches everything saved: retrieved and uploaded. #}
   <div class="mt-5">
     {% include "fragments/search/fulltext_bar.html" %}

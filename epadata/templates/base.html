@@ -15,7 +15,7 @@
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
             crossorigin="anonymous"></script>
     {#  the logo also becomes the browser-tab icon #}
-    <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml" />
+    <link rel="icon" href="{{ url_for('static', filename='img/epaDatalogo2.png') }}" type="image/png" />
     {% block head %}{% endblock %}
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/style.css') }}" />
@@ -23,11 +23,10 @@
 <body>
     <nav class="navbar navbar-expand bg-body-tertiary">
         <div class="container-fluid">
-            {# CHANGED: the brand link now has a logo image in front of the name. To use your own logo, save it as
+            {#  the brand link now has a logo image in front of the name. To use your own logo, save it as
                epadata/static/img/logo.svg (or change the filename on the next line, e.g. logo.png). #}
             <a class="navbar-brand" href="{{ url_for('index.home_page') }}">
-                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" />
-                <span>epaData</span>
+                <img src="{{ url_for('static', filename='img/epaDatalogo2.png') }}" alt="epaData home" />
             </a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">

@@ -15,10 +15,10 @@
         <h2 class="h4">Project Introduction</h2>
         <p>The specific goal of this project is to design and implement a web application that can collect, store, manage, and visualize environmental and power-sector data obtained from the U.S. Environmental Protection Agency. This Flask-based web application will support:</p>
         <ul>
-            <li>Retrieving selected Environmental data records from the EPA website using one or more of the following methods: the CAM API, automatically downloading CAMPD bulk files, or importing files obtained through the CAMPD Custom Data Download.</li>
+            <li>Retrieving selected Environmental data records from the EPA website through the CAMD API.</li>
             <li>Uploading environmental data from CSV or Excel Files, first performing proper quality control methods by validating the uploaded data.</li>
-            <li>A database in SQLite to store the verified and uploaded data that enforces relationships, uniqueness, and data integrity rules when appropriate.</li>
-            <li>Data search, download, and display according to the user’s requests.</li>
+            <li>A database in SQLite to store all retrieved data from the CAMPD API as well as locally verified and uploaded data. The database enforces relationships, uniqueness, and data integrity rules when appropriate.</li>
+            <li>Proper data search, download, and display according to the user’s requests.</li>
         </ul>
     </section>
 
@@ -42,12 +42,40 @@
 
     <section>
         <h2 class="h4">Data Sources</h2>
-        <p>include data sources when finished</p>
+        <p>All data sources originate from environmental and power-sector data obtained from the U.S Environmental Protection Agency.
+                Specifically sourced from the Clean Air Markets Program Data API. 
+        </p>
     </section>
 
     <section>
         <h2 class="h4">Current Data Coverage</h2>
-        <p>include data coverage</p>
+        <p>
+                According to the Clean Air Market's Program Data website, 
+                "The Clean Air Markets Division began collecting its Power Sector Emissions Data in 1995 at the beginning of the Acid Rain Program. Affected EGUs report the following data to EPA:
+        <ul>
+                <li>Hourly emissions of sulfur dioxide (SO₂), nitrogen oxides (NOₓ), carbon dioxide (CO₂), and mercury (Hg) in short tons(1)</li>
+                <li>Facility information, such as unit type (e.g., tangential-fired boiler, combustion turbine, combined cycle), source category (e.g., electric utility, industrial boiler), owner, and location (including latitude and longitude)</li>
+                <li>Primary and secondary fuel type and the begin and end dates of use(2)</li>
+                <li>Emissions control device(s) used and the begin and end dates of those devices(3)</li>
+                <li>Hourly heat input expressed in million British thermal units, or mmBtu</li>
+                <li>Hourly gross electricity generation expressed in megawatt-hours, or MWh, or total steam generation of the unit expressed in thousand pounds of steam per hour</li>
+                <li>Type of emissions monitoring method and the begin and end dates of use</li>
+                <li>QA test information to validate hourly emissions data, such as testing date, test type, and test results (e.g., difference in readings between the emission monitor and the reference test)"</li>
+        </ul>
+        Emissions from power plants (electric generating units, or EGUs) are reported to EPA
+            starting in different years<a class="text-decoration-none" id="ref1" href="#fn1"><sup>1</sup></a>.
+            The data does not say which fuel an EGU burned in a given hour<a class="text-decoration-none" id="ref2" href="#fn2"><sup>2</sup></a>,
+            and it does not include the hourly operating parameters or efficiency of control equipment<a class="text-decoration-none" id="ref3" href="#fn3"><sup>3</sup></a>.
+        </p>
+        <div class="small text-body-secondary border-top pt-2 mt-3">
+            <p id="fn1" class="mb-1"><sup>1</sup> The largest coal-fired EGUs began reporting their SO₂, NOₓ, and CO₂ emissions to EPA in 1995, with the remaining fossil fuel-fired EGUs reporting these emissions beginning in 2000. EGUs began reporting mercury emissions to EPA in 2015, with some EGUs receiving extensions to 2017. <a href="#ref1" aria-label="Back to text">&#8617;</a></p>
+            <p id="fn2" class="mb-1"><sup>2</sup> Information about fuel burned in each hour is not reported to EPA. For example, if an EGU can burn both coal and natural gas, it does not specify which fuel is used each hour. <a href="#ref2" aria-label="Back to text">&#8617;</a></p>
+            <p id="fn3" class="mb-0"><sup>3</sup> Control equipment hourly operating parameters or efficiency is not reported to EPA. <a href="#ref3" aria-label="Back to text">&#8617;</a></p>
+        </div>
+        <div class="small text-body-secondary border-bottom pt-2 mt-3">
+        </div>
+        This project stores, displays, and will eventually allow users to analyze this data, which is freely available on the CAMPD website. 
+        </p>
     </section>
     {#todo: update all parts of the home page #}
 {% endblock %}

@@ -190,13 +190,12 @@ class FacilityInfoRecordModel(BaseModel):
         ]
         # Replace NaN values with None so Pydantic handles optional fields correctly.
         records = df.where(pd.notnull(df), None).to_dict(orient="records")
-        preview_records = json.loads(
-            df.head(100).to_json(orient="records", date_format="iso")
-        )
+        preview_records = df.head(100)
 
         valid_records = []
         invalid_records = []
-        first_seen: dict[tuple, int] = {}  # NEW: (facility, unit, year) -> first row number
+        # NEW: (facility, unit, year) -> first row number
+        first_seen: dict[tuple, int] = {}
 
         for idx, row in enumerate(records):
             row_number = idx + 2  # Account for header row and 1-based index
@@ -207,7 +206,8 @@ class FacilityInfoRecordModel(BaseModel):
             }
             try:
                 # Validate row dictionary against Pydantic schema
-                validated_row = FacilityInfoRecordModel.model_validate(mapped_row)
+                validated_row = FacilityInfoRecordModel.model_validate(
+                    mapped_row)
                 # NEW: the same facility + unit + year twice in one file used to crash the
                 # import (database uniqueness rule). Keep the first, report the repeats.
                 key = (

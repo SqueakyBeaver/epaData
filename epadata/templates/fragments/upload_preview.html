@@ -157,33 +157,12 @@
                  aria-labelledby="headingDataPreview"
                  data-bs-parent="#uploadPreviewAccordion">
                 <div class="accordion-body">
-                    <div class="table-responsive preview-table">
-                        <table class="table table-bordered table-striped table-hover table-sm mb-0 nowrap"
-                               id="previewTable"
-                               data-key-cols='{{ key_idx|tojson }}'>
-                            <thead>
-                                <tr>
-                                    {%- for column in preview.columns -%}
-                                        <th scope="col">{{ column }}</th>
-                                    {%- endfor -%}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {%- for row in preview.preview_records -%}
-                                    <tr>
-                                        {%- for column in preview.columns -%}
-                                            <td>{{ row.get(column) if row.get(column) is not none else '' }}</td>
-                                        {%- endfor -%}
-                                    </tr>
-                                {%- else -%}
-                                    <tr>
-                                        <td colspan="{{ preview.columns|length }}"
-                                            class="text-body-secondary text-center py-3">No rows were found.</td>
-                                    </tr>
-                                {%- endfor -%}
-                            </tbody>
-                        </table>
-                    </div>
+                    {% if preview.preview_records.empty %}
+                        <p class="text-body-secondary text-center py-3">No valid rows were found.</p>
+                    {% else %}
+                        {% set data = preview.preview_records %}
+                        {% include "fragments/dataset_table.html" %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -201,10 +180,9 @@
                 <ul class="mb-0">
                     {%- for rejected in preview.invalid_records[:20] -%}
                         {# CHANGED: each reason now starts with the name of the field it is about #}
-                        <li>Row {{ rejected.row_number }}:
-                            {% for error in rejected.errors -%}
-                                {{ error.loc|join('/') }}: {{ error.msg }}{{ '; ' if not loop.last }}
-                            {%- endfor %}
+                        <li>
+                            Row {{ rejected.row_number }}:
+                            {% for error in rejected.errors -%}{{ error.loc|join("/") }}: {{ error.msg }}{{ '; ' if not loop.last }}{%- endfor %}
                         </li>
                     {%- endfor -%}
                     {%- if preview.invalid_records|length > 20 -%}

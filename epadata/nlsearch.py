@@ -389,6 +389,7 @@ def interpret(text: str) -> Understanding | None:
     text = _FUEL.sub(fuel, text)
 
     result.states = list(dict.fromkeys(result.states))
-    words = [w for w in re.findall(r"[a-z0-9][a-z0-9'./-]*", text) if w not in _STOP]
+    words = [w for w in re.findall(r"[a-z0-9][a-z0-9'./-]*", text)
+             if w not in _STOP and not _FACILITY_WORD.match(w) and not _UNIT_WORD.match(w)]
     result.words = " ".join(words)
     return result

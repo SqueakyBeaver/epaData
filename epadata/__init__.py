@@ -13,7 +13,7 @@ def create_app(test_config=None):
 
     globals.app = Flask(__name__, instance_relative_config=True)
     globals.app.config.from_mapping(
-        SECRET_KEY=os.getenv("FLASK_SECRET_KEY"),
+        SECRET_KEY=os.getenv("FLASK_SECRET_KEY") or "dev",
         DB_URI="sqlite:///epadata/db/db.sqlite",
         UPLOADS_DIR="./epadata/data/uploads",
         # NEW: where Whoosh keeps its index. Built from this file's own location, so it

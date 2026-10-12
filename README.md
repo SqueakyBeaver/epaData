@@ -11,6 +11,11 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+Create the file `.env` and add your EPA CAMPD API key to it like so (example also found in .env.example):
+```
+CAMPD_API_KEY=<your_key_here>
+```
+
 Run the flask application:
 ```sh
 python -m epadata

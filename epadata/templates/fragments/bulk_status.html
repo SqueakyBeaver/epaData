@@ -1,0 +1,66 @@
+{# added a spinning circle instead of progress bar, didn't like the look :/. #}
+{# this is loading many years or all states into the database. to change this, 
+    i also changed how api calls were made because it would time out per minute.
+     While the job runs it asks the server for itself again every 3 seconds
+   (hx-trigger="every 3s"); when the job is over the trigger is left out, so polling stops.
+   Needs `bulk`, the dictionary from bulkload.snapshot(). #}
+<div id="bulk-status"
+     {% if bulk.running %}
+     hx-get="{{ url_for('retrieve.bulk_status') }}"
+     hx-trigger="every 3s"
+     hx-target="#bulk-status"
+     hx-swap="outerHTML"
+     {% endif %}>
+  {% if bulk.error %}
+    <div class="alert alert-danger mt-3 mb-0">{{ bulk.error }}</div>
+  {% endif %}
+  {% if bulk.started %}
+    <div class="mt-3">
+      {# a spinning circle (like an old video-buffering wheel) while the job runs, with the percent beside it #}
+      <div class="d-flex align-items-center gap-3">
+        {% if bulk.running %}
+          <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        {% endif %}
+        <div>
+          <div class="fs-3 lh-1">{{ bulk.percent }}%</div>
+          <div class="small text-body-secondary">of states finished</div>
+        </div>
+      </div>
+      <ul class="list-unstyled small mt-2 mb-2">
+        <li>
+          {% if bulk.running %}
+            Working on <strong>{{ bulk.current or "starting" }}</strong>
+          {% else %}
+            <strong>{{ bulk.message or "Finished." }}</strong>
+          {% endif %}
+        </li>
+        <li>States finished: {{ bulk.states_done }} of {{ bulk.states_total }} (years {{ bulk.years[0] }}-{{ bulk.years[-1] }})</li>
+        <li>Records saved so far: {{ '{:,}'.format(bulk.records_saved) }}</li>
+        <li>Requests sent to the EPA: {{ bulk.requests }}
+          {% if bulk.rate_remaining is not none %}(the EPA says {{ bulk.rate_remaining }}{% if bulk.rate_limit %} of {{ bulk.rate_limit }}{% endif %} are left){% endif %}</li>
+        {% if bulk.paused_until %}
+          <li class="text-warning-emphasis">Paused: {{ bulk.paused_reason }}. Continuing at about {{ bulk.paused_text }}.</li>
+        {% endif %}
+        {% if bulk.failed %}
+          <li class="text-danger">Failed (they will be tried again next time): {{ bulk.failed|join(", ") }}</li>
+        {% endif %}
+      </ul>
+      {% if bulk.log %}
+        <details {% if bulk.running %}open{% endif %}>
+          <summary class="small">Recent activity</summary>
+          <pre class="small mb-0 mt-1">{% for line in bulk.log %}{{ line }}
+{% endfor %}</pre>
+        </details>
+      {% endif %}
+      {% if bulk.running %}
+        <button class="btn btn-sm btn-outline-secondary mt-2"
+                hx-post="{{ url_for('retrieve.bulk_stop') }}"
+                hx-target="#bulk-status"
+                hx-swap="outerHTML">Stop</button>
+        <span class="small text-body-secondary ms-2">Stopping keeps everything saved so far.</span>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

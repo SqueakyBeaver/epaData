@@ -4,8 +4,9 @@ import pandas as pd
 from flask import Blueprint, Response, redirect, render_template, request, url_for
 from sqlalchemy import select
 
+from epadata import bulkload  # NEW: the "load all data" background job
 from epadata import search as fulltext  # full-text search (Whoosh)
-from epadata.campd import CAMPDClient
+from epadata.campd import CAMPDClient, RateLimitError  # CHANGED: RateLimitError is new
 from epadata.db import Session  # NEW: retrieved data is now saved in the database
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit  # NEW
 from epadata.importer import import_annual_data, parse_years  # NEW
@@ -14,7 +15,7 @@ from epadata.routes.utils import table_download  # NEW: CSV / Excel downloads
 bp = Blueprint("retrieve", __name__, url_prefix="/retrieve")
 
 
-# ---- NEW: full-text search box (searches ALL saved data, independent of the filters) ----
+# ---- updated: full-text search box (searches ALL saved data, independent of the filters) ----
 
 
 def wants_fragment():
@@ -27,7 +28,7 @@ def wants_fragment():
 
 @bp.after_request
 def vary_on_htmx(resp):
-    # NEW: the same URL returns a fragment or a whole page, so caches must know
+    # update: the same URL returns a fragment or a whole page, so caches must know
     resp.vary.add("HX-Request")
     return resp
 
@@ -38,7 +39,7 @@ def fulltext_download():
     ft = fulltext.search(
         request.args.get("q", ""), per_page=None, relax=request.args.get("relax") == "1"
     )
-    if ft["ranking"]:  # NEW: a "top 10 ..." sentence downloads the ranking, not a text search
+    if ft["ranking"]:  # update: a "top 10 ..." sentence downloads the ranking, not a text search
         return redirect(
             url_for(
                 "explore.rank_download",
@@ -72,7 +73,7 @@ def fulltext_download():
 
 @bp.route("/")
 def index():
-    # NEW: "?q=" is the full-text search box. It never touches the filter form below it.
+    # update: "?q=" is the full-text search box. It never touches the filter form below it.
     # htmx gets just the results; a reload, a shared link or the back button gets the whole
     # page with the results filled in.
     page_data = {}
@@ -95,8 +96,9 @@ def index():
         fuel_type_codes=client.get_fuel_type_codes(),
         unit_type_codes=client.get_unit_type_codes(),
         control_codes=client.get_control_codes(),
-        source_categories=SOURCE_CATEGORIES,  # NEW
-        **page_data,  # NEW: adds "ft" only when a search was run
+        source_categories=SOURCE_CATEGORIES,  # update
+        bulk=bulkload.snapshot(),  # update: progress of the "load all data" job (if one ran)
+        **page_data,  # update: adds "ft" only when a search was run
     )
 
 
@@ -110,7 +112,7 @@ def filter_facilities():
     )
 
 
-# NEW: the EPA accepts exactly these source categories (from its facilities API documentation);
+# update: the EPA accepts exactly these source categories (from its facilities API documentation);
 # there is no endpoint that lists them, so the form's drop-down is filled from this list.
 SOURCE_CATEGORIES = [
     "Automotive Stampings", "Bulk Industrial Chemical", "Cement Manufacturing", "Cogeneration",
@@ -119,7 +121,7 @@ SOURCE_CATEGORIES = [
     "Portland Cement Plant", "Small Power Producer", "Theme Park",
 ]
 
-# NEW: how each filter is named in the form, and what to call it on screen
+# update: how each filter is named in the form, and what to call it on screen
 FILTER_LABELS = {
     "state_code": "state",
     "facility_id": "facility",
@@ -279,6 +281,13 @@ def retrieve_data():
         annual = client.get_annual_emissions(years, **filters)
         attributes = client.get_facility_attributes(years, **filters)
         annual = _keep_only_filtered_units(annual, attributes, filters)
+    except RateLimitError as e:  # NEW: say what really happened, and how long to wait
+        wait = f" Try again in about {max(1, round(e.retry_after / 60))} minute(s)." if e.retry_after else " Try again in a few minutes (the limit resets every hour)."
+        return render_template(
+            "fragments/retrieve_status.html",
+            error="The EPA says this API key has made too many requests." + wait
+            + " For a lot of data, use \"Load many years or all states\" below, which paces itself.",
+        )
     except Exception as e:
         print(e)
         return render_template(
@@ -307,3 +316,36 @@ def retrieve_data():
         years=years,
         filters=filters,
     )
+
+
+# ---- updated: "Load many years or all states" (see bulkload.py) ----
+
+
+def _bulk_fragment():
+    return render_template("fragments/bulk_status.html", bulk=bulkload.snapshot())
+
+
+@bp.post("/bulk/start")
+def bulk_start():
+    years = parse_years(request.form.get("years", ""))
+    if not years:
+        return render_template(
+            "fragments/bulk_status.html",
+            bulk={**bulkload.snapshot(), "error": "Enter a year or range, such as 2000-2025."},
+        )
+    states = request.form.getlist("states")  # empty = every state
+    if not states:
+        states = [s.code for s in CAMPDClient().get_state_codes()]
+    bulkload.start(years, sorted(states), redo=request.form.get("redo") == "1")
+    return _bulk_fragment()
+
+
+@bp.get("/bulk/status")
+def bulk_status():
+    return _bulk_fragment()
+
+
+@bp.post("/bulk/stop")
+def bulk_stop():
+    bulkload.stop()
+    return _bulk_fragment()

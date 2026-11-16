@@ -20,9 +20,13 @@
 {% block content %}
   <h2 class="h5 mb-0">Retrieve data from the EPA</h2>
   <p class="text-body-secondary mb-0">Queries the EPA CAMPD service using the filters below. </p>
+  {# NEW: hx-indicator shows the "Retrieving..." message while the EPA is being asked, and
+     hx-disabled-elt turns the button off so it cannot be pressed twice #}
   <form class="grid g-4"
         hx-post="{{ url_for('.retrieve_data') }}"
-        hx-target="#output">
+        hx-target="#output"
+        hx-indicator="#retrieve-progress"
+        hx-disabled-elt="#retrieve-button">
     <!-- Prevents the form being submitted when a user presses enter in the years text input -->
     <button type="submit" disabled class="d-none"></button>
     <div class="row g-4 mb-4">
@@ -96,13 +100,60 @@
     </div>
     <div class="row g-4 mb-4">
       <div class="col-8 d-flex justify-content-center">
-        <button class="btn btn-primary px-4" type="submit">Search facilities</button>
+        <button id="retrieve-button" class="btn btn-primary px-4" type="submit">Search facilities</button>
       </div>
+    </div>
+    {# NEW: shown only while a request is running (the htmx-indicator class hides it otherwise) #}
+    <div id="retrieve-progress" class="htmx-indicator mb-3" role="status">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <strong>Retrieving data from the EPA and saving it to the database&hellip;</strong>
+      </div>
+      <div class="progress" style="height: 6px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
+      </div>
+      <div class="form-text">Several years or a whole state can take a minute or more. Please keep this page open.</div>
     </div>
   </form>
   <div class="container-lg w-100">
     <output id="output" class="d-block w-100"></output>
   </div>
+  {# NEW: load a lot of data (many years, every state) as a background job that paces itself #}
+  <fieldset class="border rounded p-3 mt-4">
+    <legend class="float-none w-auto px-2 fs-5">Load many years or all states</legend>
+    <p class="mb-2">
+      The form above asks the EPA for everything in one request, which fails for large amounts of data
+      because the EPA limits each API key to about 1,000 requests per hour. This loader works through one
+      state at a time, saves each state as it goes, waits whenever the EPA asks it to, and skips data
+      you already have, so you can stop it and start it again later without losing anything.
+      Loading every state for 2000-2025 takes roughly two hours.
+    </p>
+    <form class="row g-3 align-items-end"
+          hx-post="{{ url_for('.bulk_start') }}"
+          hx-target="#bulk-status"
+          hx-swap="outerHTML">
+      <div class="col-md-3">
+        <label class="form-label" for="bulk-years">Years</label>
+        <input type="text" class="form-control" id="bulk-years" name="years" value="2000-2025" required />
+      </div>
+      <div class="col-md-5">
+        <label class="form-label" for="bulk-states">States (leave empty for all)</label>
+        <select class="form-select" id="bulk-states" name="states" multiple size="4">
+          {% for state in state_codes %}
+            <option value="{{ state.code }}">{{ state.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="bulk-redo" name="redo" value="1" />
+          <label class="form-check-label" for="bulk-redo">Download again even if already saved</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Start loading</button>
+      </div>
+    </form>
+    {% include "fragments/bulk_status.html" %}
+  </fieldset>
   {#  the full-text search is now BELOW the retrieval form, because retrieving saves the
      data that this search looks through. It searches everything saved: retrieved and uploaded. #}
   <div class="mt-5">

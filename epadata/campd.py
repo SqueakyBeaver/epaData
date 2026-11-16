@@ -1,3 +1,4 @@
+import time  # NEW: short pauses before retrying a failed request
 from collections.abc import Sequence
 from datetime import date
 from os import getenv
@@ -11,14 +12,37 @@ from epadata.db import Session
 from epadata.db.models import StateOrTerritory
 
 
+# NEW: raised when the EPA answers "429 Too Many Requests". The EPA allows each API key a limited
+# number of requests per hour. retry_after is how many seconds the EPA asked us to wait (or None).
+class RateLimitError(RuntimeError):
+    def __init__(self, retry_after=None):
+        super().__init__("EPA rate limit exceeded")
+        self.retry_after = retry_after
+
+
+def _seconds(value):
+    """NEW: '120' -> 120. Anything else (missing, a date, junk) -> None."""
+    try:
+        return max(0, int(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 class CAMPDClient:
     def __init__(self):
         load_dotenv()
-        self.api_key = str(getenv("CAMPD_API_KEY"))
+        # CHANGED: str(getenv(...)) turned a MISSING key into the text "None", which is never
+        # empty, so the check below could never fire. Check the real value instead.
+        self.api_key = getenv("CAMPD_API_KEY") or ""
 
         if not self.api_key:
             raise ValueError(
                 "No CAMPD_API_KEY found in environment variables or .env")
+
+        # NEW: used by the "load all data" job (bulkload.py)
+        self.before_request = None   # called just before every request (to pace them)
+        self.rate_remaining = None   # requests the EPA says are left (when it tells us)
+        self.rate_limit = None       # the EPA's own limit per hour (when it tells us)
 
     def send_request(
         self,
@@ -38,12 +62,43 @@ class CAMPDClient:
             if not k or not v:
                 params.pop(k)
 
-        resp = requests.get(
-            url=f"https://api.epa.gov/easey/{endpoint}",
-            headers=headers,
-            params=params,
-            stream=True,
-        )
+        # CHANGED: the request is tried up to 3 times when the connection drops or the EPA has a
+        # temporary server problem (500-504). A timeout was added too: before, one stuck request
+        # could hang the page forever.
+        for attempt in range(3):
+            if self.before_request:
+                self.before_request()
+            try:
+                resp = requests.get(
+                    url=f"https://api.epa.gov/easey/{endpoint}",
+                    headers=headers,
+                    params=params,
+                    stream=True,
+                    timeout=(15, 180),  # seconds to connect, seconds of silence while reading
+                )
+            except (requests.ConnectionError, requests.Timeout):
+                if attempt == 2:
+                    raise
+                time.sleep(5 * (attempt + 1))
+                continue
+
+            # NEW: api.data.gov (which fronts this API) reports the hourly allowance in headers
+            left = _seconds(resp.headers.get("X-RateLimit-Remaining"))
+            if left is not None:
+                self.rate_remaining = left
+            allowed = _seconds(resp.headers.get("X-RateLimit-Limit"))
+            if allowed is not None:
+                self.rate_limit = allowed
+
+            if resp.status_code == 429:
+                # NEW: do NOT keep hammering the API. Tell the caller how long to wait.
+                raise RateLimitError(
+                    _seconds(resp.headers.get("Retry-After") or resp.headers.get("retryAfter"))
+                )
+            if resp.status_code in (500, 502, 503, 504) and attempt < 2:
+                time.sleep(5 * (attempt + 1))
+                continue
+            break
 
         if not resp.ok:
             raise RuntimeError(
@@ -260,6 +315,31 @@ class CAMPDClient:
                 controlTechnologies=control_technology,
             )
         return rows
+
+    def get_annual_emissions_all_years(self, years, state_code=None):
+        """NEW: ONE request for all of these years (years joined with "|", as the attributes call does).
+
+        The EPA's "streaming-services" endpoints are made to send a lot of data in one request, and
+        they seem to allow far fewer requests than the older paged ones. Asking once per year (what
+        get_annual_emissions does) used up the allowance within minutes.
+        """
+        return self.send_request(
+            "streaming-services/emissions/apportioned/annual",
+            year="|".join(str(y) for y in years),
+            stateCode=state_code,
+        )
+
+    def get_facility_attributes_all_years(self, years, state_code=None):
+        """NEW: one request for ALL of these years (the EPA takes years joined with "|").
+
+        The normal get_facility_attributes below asks once per year. For the "load all data" job
+        that would double the number of requests, and the EPA limits requests per hour.
+        """
+        return self.send_request(
+            "streaming-services/facilities/attributes",
+            year="|".join(str(y) for y in years),
+            stateCode=state_code,
+        )
 
     def get_facility_attributes(
         self,

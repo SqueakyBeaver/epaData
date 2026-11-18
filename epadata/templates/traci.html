@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}TRACI factors{% endblock %}
+{% block header %}
+    <div class="w-100">
+        <h1 class="mb-1">TRACI Characterization Factors</h1>
+        <p class="text-body-secondary mb-0">
+            EPA's TRACI gives, for each pollutant, how much one kilogram contributes to each impact category.
+            The factors stored here are multiplied by CAMPD emission masses to get <em>potential</em> impacts.
+        </p>
+    </div>
+{% endblock %}
+{% block content %}
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">How the calculation works</h2>
+            <ol class="mb-2">
+                <li>CAMPD reports short tons. Convert to kilograms: <code>mass_kg = mass_short_tons &times; {{ short_ton_kg }}</code></li>
+                <li>For each impact category <em>c</em>: <code>impact_c = &Sigma; (mass_kg of pollutant i &times; factor of i for c)</code></li>
+                <li>Optionally per MWh: <code>impact intensity_c = impact_c / gross load (MWh)</code></li>
+            </ol>
+            <p class="small mb-0">Each category keeps its own unit (for example kg CO2 eq); categories are never added together.
+                Results are potential impacts for comparison, not measurements of actual harm.</p>
+        </div>
+    </section>
+
+    {% if message %}
+        {% if message.ok %}
+            <div class="alert alert-success mb-0">Imported {{ message.imported }} factor(s) for TRACI {{ message.version }}
+                ({{ message.skipped }} row(s) skipped because they were not marked verified = yes).</div>
+        {% else %}
+            <div class="alert alert-danger mb-0">
+                <strong>Nothing was imported.</strong>
+                <ul class="mb-0">{% for e in message.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">Stored factors</h2>
+            {% if factors %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>TRACI</th><th>CAMPD pollutant</th><th>TRACI substance</th><th>CAS</th><th>Impact category</th><th class="text-end">Factor</th><th>Unit</th></tr></thead>
+                        <tbody>
+                            {% for r in factors %}
+                                <tr><td>{{ r.traci_version }}</td><td>{{ r.campd_pollutant }}</td><td>{{ r.substance }}</td><td>{{ r.cas or '' }}</td>
+                                    <td>{{ r.impact_category }}</td><td class="text-end">{{ r.factor }}</td><td>{{ r.factor_unit }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="mb-0">No factors are stored yet. Import a reviewed factor file below.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">Import the factors</h2>
+            <form method="post" class="mb-3">
+                <input type="hidden" name="bundled" value="1" />
+                <button class="btn btn-primary" type="submit">Import the TRACI 2.2 factors included with the project</button>
+                <div class="form-text">
+                    CO2 (global climate), SO2 (acidification, particulates) and NOx (acidification, particulates, photochemical
+                    oxidation), copied from EPA's TRACI 2.2 spreadsheet (sheet "Substances", air emissions). NOx uses TRACI's own
+                    "NITROGEN OXIDES" row.
+                </div>
+            </form>
+            <h3 class="h6">Or import your own reviewed file</h3>
+            <p class="small">
+                A CSV with these columns: <code>{{ required_columns|join(', ') }}</code>.
+                Only rows with <code>verified</code> = <code>yes</code> are imported, the medium must be <code>air</code>,
+                and each pollutant may have only one factor per category. Importing replaces the stored factors of the
+                same TRACI version. Create the file from EPA's TRACI 2.2 spreadsheet with <code>scripts/extract_traci.py</code>.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-end">
+                <div>
+                    <label class="form-label" for="file">CSV file</label>
+                    <input class="form-control" type="file" id="file" name="file" accept=".csv,text/csv" />
+                </div>
+                <button class="btn btn-primary" type="submit">Import</button>
+            </form>
+        </div>
+    </section>
+{% endblock %}

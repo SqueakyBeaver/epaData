@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Analysis{% endblock %}
+{% block header %}
+    <div class="w-100">
+        <h1 class="mb-1">Analytical Dataset Builder</h1>
+        <p class="text-body-secondary mb-0">
+            Choose which records to analyze. The filters become part of the page address, so a link
+            to this page repeats the same analysis.
+        </p>
+    </div>
+{% endblock %}
+{% block content %}
+    <section class="card shadow-sm">
+        <div class="card-body">
+            {# a normal GET form: every filter is a URL parameter #}
+            <form method="get" action="{{ url_for('analysis.index') }}" class="row g-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="year_from">Year from</label>
+                    <input class="form-control" id="year_from" name="year_from" inputmode="numeric" value="{{ form.get('year_from', '') }}" placeholder="2000" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="year_to">Year to</label>
+                    <input class="form-control" id="year_to" name="year_to" inputmode="numeric" value="{{ form.get('year_to', '') }}" placeholder="2025" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="state">State(s)</label>
+                    <input class="form-control" id="state" name="state" value="{{ form.get('state', '') }}" placeholder="KY, OH" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="facility_id">Facility ID(s)</label>
+                    <input class="form-control" id="facility_id" name="facility_id" value="{{ form.get('facility_id', '') }}" placeholder="1355, 6018" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="unit_id">Unit ID(s)</label>
+                    <input class="form-control" id="unit_id" name="unit_id" value="{{ form.get('unit_id', '') }}" placeholder="1, CT1" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="fuel">Primary fuel contains</label>
+                    <input class="form-control" id="fuel" name="fuel" value="{{ form.get('fuel', '') }}" placeholder="Coal" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="unit_type">Unit type contains</label>
+                    <input class="form-control" id="unit_type" name="unit_type" value="{{ form.get('unit_type', '') }}" placeholder="Combustion turbine" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="control">Control technology contains</label>
+                    <input class="form-control" id="control" name="control" value="{{ form.get('control', '') }}" placeholder="Scrubber" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="program">Emissions program contains</label>
+                    <input class="form-control" id="program" name="program" value="{{ form.get('program', '') }}" placeholder="ARP" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="min_op_hours">Minimum operating hours</label>
+                    <input class="form-control" id="min_op_hours" name="min_op_hours" inputmode="decimal" value="{{ form.get('min_op_hours', '') }}" placeholder="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="min_gross_load">Minimum gross load (MWh)</label>
+                    <input class="form-control" id="min_gross_load" name="min_gross_load" inputmode="decimal" value="{{ form.get('min_gross_load', '') }}" placeholder="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="dataset_id">Dataset</label>
+                    <select class="form-select" id="dataset_id" name="dataset_id">
+                        <option value="">All datasets (newest copy)</option>
+                        {% for id, name in dataset_choices %}
+                            <option value="{{ id }}" {% if f.dataset_id == id %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div class="form-text mb-2">
+                        Separate several values with commas. Fuel, unit type, control and program match any
+                        text that <em>contains</em> the words. Leave everything empty to use all records.
+                    </div>
+                    <button class="btn btn-primary" type="submit">Build dataset</button>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('analysis.index') }}">Clear</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {% for error in f.errors %}
+        <div class="alert alert-warning mb-0">{{ error }}</div>
+    {% endfor %}
+
+    {% if result %}
+        {% set c = result.counts %}
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Selected data</h2>
+                {% if c.records == 0 %}
+                    <p class="mb-0">No records match these filters. Check the spelling, widen the year range, or
+                        load data on the <a href="{{ url_for('retrieve.index') }}">EPA Retrieval</a> page first.</p>
+                {% else %}
+                    <div class="row text-center g-3 mb-3">
+                        <div class="col-6 col-md-3"><div class="fs-3 lh-1">{{ '{:,}'.format(c.records) }}</div><div class="small text-body-secondary">records (unit-years)</div></div>
+                        <div class="col-6 col-md-3"><div class="fs-3 lh-1">{{ '{:,}'.format(c.facilities) }}</div><div class="small text-body-secondary">facilities</div></div>
+                        <div class="col-6 col-md-3"><div class="fs-3 lh-1">{{ '{:,}'.format(c.units) }}</div><div class="small text-body-secondary">units</div></div>
+                        <div class="col-6 col-md-3"><div class="fs-3 lh-1">{{ c.years|length }}</div><div class="small text-body-secondary">years ({{ c.years[0] }}-{{ c.years[-1] }})</div></div>
+                    </div>
+                    <dl class="row small mb-3">
+                        {% for label, value in filter_text.items() %}
+                            <dt class="col-sm-4">{{ label }}</dt>
+                            <dd class="col-sm-8">{{ value }}</dd>
+                        {% endfor %}
+                    </dl>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ csv_url }}">Download CSV</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ xlsx_url }}">Download Excel</a>
+                    </div>
+                    {% if share_url %}
+                        <label class="form-label small" for="share">Link that repeats this analysis</label>
+                        <input class="form-control form-control-sm" id="share" readonly value="{{ share_url }}" onclick="this.select()" />
+                    {% endif %}
+                {% endif %}
+            </div>
+        </section>
+
+        {% if c.records %}
+            <section class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">Missing values</h2>
+                    <p class="small text-body-secondary">
+                        A blank is never turned into zero. A derived value (intensity, heat rate, year-over-year
+                        change) stays missing when it cannot be calculated: the gross load is zero or missing,
+                        or the previous year is not in the data.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Variable</th><th>Unit</th><th class="text-end">Missing</th><th class="text-end">Present</th><th class="text-end">% missing</th></tr></thead>
+                            <tbody>
+                                {% for m in result.missing %}
+                                    <tr {% if m.kind == 'derived' %}class="table-light"{% endif %}>
+                                        <td>{{ m.label }}{% if m.kind == 'derived' %} <span class="badge text-bg-secondary">derived</span>{% endif %}</td>
+                                        <td>{{ m.unit }}</td>
+                                        <td class="text-end">{{ '{:,}'.format(m.missing) }}</td>
+                                        <td class="text-end">{{ '{:,}'.format(m.present) }}</td>
+                                        <td class="text-end">{{ m.percent }}%</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">First {{ result.shown }} records</h2>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead><tr>{% for label in columns %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+                            <tbody>
+                                {% for row in result.preview %}
+                                    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-body-secondary mt-2 mb-0">The download has every record and every variable.</p>
+                </div>
+            </section>
+        {% endif %}
+    {% endif %}
+
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">Variables available for analysis</h2>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Variable</th><th>Unit</th><th>Meaning</th></tr></thead>
+                    <tbody>
+                        {% for key, (label, unit, meaning) in raw_variables.items() %}
+                            <tr><td>{{ label }}</td><td>{{ unit }}</td><td>{{ meaning }}</td></tr>
+                        {% endfor %}
+                        {% for key, (label, unit, meaning) in derived_variables.items() %}
+                            <tr class="table-light"><td>{{ label }} <span class="badge text-bg-secondary">derived</span></td><td>{{ unit }}</td><td>{{ meaning }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="small mt-2 mb-0">TRACI impact categories are calculated from the CO2, SO2 and NOx masses once factors are imported
+                on the <a href="{{ url_for('analysis.traci_page') }}">TRACI factors</a> page.</p>
+        </div>
+    </section>
+{% endblock %}

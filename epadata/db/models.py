@@ -226,6 +226,40 @@ class AnnualRecord(Base):
     )
 
 
+#  (Phase 2): EPA TRACI characterization factors ---------------------------------------
+class TraciFactor(Base):
+    """One TRACI factor: how much ONE KILOGRAM of a pollutant (released to air) contributes to ONE
+    impact category. Example: CO2, "Global warming", 1.0, "kg CO2 eq / kg".
+
+    The TRACI version, substance name, CAS number, category, factor and factor unit are all stored,
+    so every calculated impact can be reproduced and interpreted correctly.
+    """
+
+    __tablename__ = "traci_factor"
+
+    id: Mapped[int] = mapped_column(init=False, primary_key=True)
+    traci_version: Mapped[str] = mapped_column(index=True)  # e.g. "2.2"
+    campd_pollutant: Mapped[str]  # which CAMPD emission this applies to: "CO2", "SO2" or "NOX"
+    substance: Mapped[str]  # the substance name exactly as listed by TRACI
+    cas: Mapped[str | None] = mapped_column(default=None)
+    medium: Mapped[str] = mapped_column(default="air")  # first version: air emissions only
+    impact_category: Mapped[str]  # e.g. "Global warming"
+    factor: Mapped[float]
+    factor_unit: Mapped[str]  # e.g. "kg CO2 eq / kg"
+    source_note: Mapped[str | None] = mapped_column(Text, default=None)
+
+    __table_args__ = (
+        # one factor per pollutant per category per medium per version: no ambiguity
+        UniqueConstraint(
+            "traci_version", "campd_pollutant", "medium", "impact_category",
+            name="uq_traci_factor",
+        ),
+        CheckConstraint(
+            "campd_pollutant IN ('CO2', 'SO2', 'NOX')", name="ck_traci_pollutant"
+        ),
+    )
+
+
 # ---- lookup tables the CAMPD client uses for dropdown lists ----------------
 
 

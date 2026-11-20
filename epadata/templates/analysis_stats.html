@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Statistics{% endblock %}
+{% block header %}
+    <div class="w-100">
+        <h1 class="mb-1">Statistics</h1>
+        <p class="text-body-secondary mb-0">Summarize one variable, break it down by group, and rank the highest and lowest.</p>
+    </div>
+{% endblock %}
+{% block content %}
+    {% include "fragments/analysis_tabs.html" %}
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('analysis.stats') }}" class="row g-3">
+                {% include "fragments/analysis_filters.html" %}
+                <div class="col-12"><hr class="my-1" /></div>
+                <div class="col-md-5">
+                    <label class="form-label" for="variable">Variable</label>
+                    <select class="form-select" id="variable" name="variable">
+                        {% for key, label, unit in variables %}
+                            <option value="{{ key }}" {% if key == variable %}selected{% endif %}>{{ label }} ({{ unit }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="group_by">Group by</label>
+                    <select class="form-select" id="group_by" name="group_by">
+                        {% for key, label in group_dims.items() %}
+                            <option value="{{ key }}" {% if key == group_by %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12"><div class="fw-semibold">Ranking</div></div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="rank_dir">Show</label>
+                    <select class="form-select" id="rank_dir" name="rank_dir">
+                        <option value="top" {% if rank_dir == 'top' %}selected{% endif %}>Highest</option>
+                        <option value="bottom" {% if rank_dir == 'bottom' %}selected{% endif %}>Lowest</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="rank_n">How many</label>
+                    <input class="form-control" id="rank_n" name="rank_n" inputmode="numeric" value="{{ rank_n }}" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="rank_level">Rank</label>
+                    <select class="form-select" id="rank_level" name="rank_level">
+                        {% for key, label in group_dims.items() %}
+                            <option value="{{ key }}" {% if key == rank_level %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="rank_agg">By</label>
+                    <select class="form-select" id="rank_agg" name="rank_agg">
+                        <option value="sum" {% if rank_agg == 'sum' %}selected{% endif %}>Total</option>
+                        <option value="mean" {% if rank_agg == 'mean' %}selected{% endif %}>Average</option>
+                        <option value="median" {% if rank_agg == 'median' %}selected{% endif %}>Median</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit">Calculate</button>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('analysis.stats') }}">Clear</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {% for error in f.errors %}<div class="alert alert-warning mb-0">{{ error }}</div>{% endfor %}
+
+    {% if records == 0 %}
+        <div class="alert alert-info mb-0">No records match these filters. Widen them, or load data on the
+            <a href="{{ url_for('retrieve.index') }}">EPA Retrieval</a> page.</div>
+    {% else %}
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h2 class="h5 mb-0">{{ var_label }} ({{ var_unit }}): all {{ '{:,}'.format(records) }} selected records</h2>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl('describe') }}">Download CSV</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl('describe', 'xlsx') }}">Download Excel</a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-2" style="max-width: 32rem;">
+                        <tbody>
+                            {% for name, value in described %}
+                                <tr><th class="fw-normal">{{ name }}</th><td class="text-end">{{ value }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small text-body-secondary mb-0">
+                    Missing values are left out of every statistic (they are not treated as zero). The standard deviation is
+                    the sample standard deviation. A quartile is the value below which 25% (Q1) or 75% (Q3) of the records fall;
+                    the interquartile range is Q3 minus Q1, the spread of the middle half of the records.
+                </p>
+            </div>
+        </section>
+
+        {% if grouped %}
+            <section class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <h2 class="h5 mb-0">{{ var_label }} by {{ group_dims[group_by]|lower }}</h2>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="{{ dl('grouped') }}">Download CSV</a>
+                            <a class="btn btn-outline-primary btn-sm" href="{{ dl('grouped', 'xlsx') }}">Download Excel</a>
+                        </div>
+                    </div>
+                    {% if grouped_total > grouped_shown %}
+                        <p class="small text-body-secondary">Showing the first {{ grouped_shown }} of {{ '{:,}'.format(grouped_total) }} groups. The download has all of them.</p>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead><tr>{% for c in grouped[0] %}<th {% if not loop.first %}class="text-end"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+                            <tbody>
+                                {% for row in grouped[1] %}
+                                    <tr>{% for cell in row %}<td {% if not loop.first %}class="text-end"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-body-secondary mt-2 mb-0">
+                        <em>records</em> = unit-years in the group; <em>count</em> = those with a value; <em>missing</em> = records minus count.
+                        {% if 'total' in grouped[0] %}<em>total</em> adds up the values that are not missing.{% endif %}
+                    </p>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h2 class="h5 mb-0">{{ 'Highest' if rank_dir == 'top' else 'Lowest' }} {{ rank_n }}:
+                        {{ group_dims[rank_level]|lower }} ranked by {{ {'sum': 'total', 'mean': 'average', 'median': 'median'}[rank_agg_used] }} {{ var_label|lower }}</h2>
+                    {% if ranked %}
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="{{ dl('rank') }}">Download CSV</a>
+                            <a class="btn btn-outline-primary btn-sm" href="{{ dl('rank', 'xlsx') }}">Download Excel</a>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if rank_agg != rank_agg_used %}
+                    <p class="small text-body-secondary">A total of {{ var_label|lower }} is not meaningful, so the average is shown instead.</p>
+                {% endif %}
+                {% if ranked %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead><tr>{% for c in ranked[0] %}<th {% if loop.index > 2 %}class="text-end"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+                            <tbody>
+                                {% for row in ranked[1] %}
+                                    <tr>{% for cell in row %}<td {% if loop.index > 2 %}class="text-end"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-body-secondary mt-2 mb-0">Groups with no value at all for this variable cannot be ranked and are left out.</p>
+                {% else %}
+                    <p class="mb-0">Nothing to rank: no group has a value for this variable.</p>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

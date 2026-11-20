@@ -10,63 +10,13 @@
     </div>
 {% endblock %}
 {% block content %}
+    {% set active = "builder" %}
+    {% include "fragments/analysis_tabs.html" %}
     <section class="card shadow-sm">
         <div class="card-body">
             {# a normal GET form: every filter is a URL parameter #}
             <form method="get" action="{{ url_for('analysis.index') }}" class="row g-3">
-                <div class="col-6 col-md-2">
-                    <label class="form-label" for="year_from">Year from</label>
-                    <input class="form-control" id="year_from" name="year_from" inputmode="numeric" value="{{ form.get('year_from', '') }}" placeholder="2000" />
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label" for="year_to">Year to</label>
-                    <input class="form-control" id="year_to" name="year_to" inputmode="numeric" value="{{ form.get('year_to', '') }}" placeholder="2025" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="state">State(s)</label>
-                    <input class="form-control" id="state" name="state" value="{{ form.get('state', '') }}" placeholder="KY, OH" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="facility_id">Facility ID(s)</label>
-                    <input class="form-control" id="facility_id" name="facility_id" value="{{ form.get('facility_id', '') }}" placeholder="1355, 6018" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="unit_id">Unit ID(s)</label>
-                    <input class="form-control" id="unit_id" name="unit_id" value="{{ form.get('unit_id', '') }}" placeholder="1, CT1" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="fuel">Primary fuel contains</label>
-                    <input class="form-control" id="fuel" name="fuel" value="{{ form.get('fuel', '') }}" placeholder="Coal" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="unit_type">Unit type contains</label>
-                    <input class="form-control" id="unit_type" name="unit_type" value="{{ form.get('unit_type', '') }}" placeholder="Combustion turbine" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="control">Control technology contains</label>
-                    <input class="form-control" id="control" name="control" value="{{ form.get('control', '') }}" placeholder="Scrubber" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="program">Emissions program contains</label>
-                    <input class="form-control" id="program" name="program" value="{{ form.get('program', '') }}" placeholder="ARP" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="min_op_hours">Minimum operating hours</label>
-                    <input class="form-control" id="min_op_hours" name="min_op_hours" inputmode="decimal" value="{{ form.get('min_op_hours', '') }}" placeholder="0" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="min_gross_load">Minimum gross load (MWh)</label>
-                    <input class="form-control" id="min_gross_load" name="min_gross_load" inputmode="decimal" value="{{ form.get('min_gross_load', '') }}" placeholder="0" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="dataset_id">Dataset</label>
-                    <select class="form-select" id="dataset_id" name="dataset_id">
-                        <option value="">All datasets (newest copy)</option>
-                        {% for id, name in dataset_choices %}
-                            <option value="{{ id }}" {% if f.dataset_id == id %}selected{% endif %}>{{ name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                {% include "fragments/analysis_filters.html" %}
                 <div class="col-12">
                     <div class="form-text mb-2">
                         Separate several values with commas. Fuel, unit type, control and program match any

@@ -1,0 +1,83 @@
+{# CHANGED: State, fuel, unit type, control technology and program are now searchable drop-downs
+   (Choices.js, the same library as the retrieval page). Year, ID and minimum boxes stay typed.
+   NEW: the filter fields shared by every analysis page. Include this INSIDE a <form class="row g-3">.
+   Needs: form (the URL parameters), f (the Filters), dataset_choices. #}
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="year_from">Year from</label>
+                    <input class="form-control" id="year_from" name="year_from" inputmode="numeric" value="{{ form.get('year_from', '') }}" placeholder="2000" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="year_to">Year to</label>
+                    <input class="form-control" id="year_to" name="year_to" inputmode="numeric" value="{{ form.get('year_to', '') }}" placeholder="2025" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="state">State(s)</label>
+                    <select class="form-select choices-multi" id="state" name="state" multiple data-placeholder="Any state (type to search)">
+                        {% for code, label in options.states %}<option value="{{ code }}" {% if code in f.states %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="facility_id">Facility ID(s)</label>
+                    <input class="form-control" id="facility_id" name="facility_id" value="{{ form.get('facility_id', '') }}" placeholder="1355, 6018" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="unit_id">Unit ID(s)</label>
+                    <input class="form-control" id="unit_id" name="unit_id" value="{{ form.get('unit_id', '') }}" placeholder="1, CT1" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="fuel">Primary fuel</label>
+                    <select class="form-select choices-multi" id="fuel" name="fuel" multiple data-placeholder="Any fuel (type to search)">
+                        {% for value in options.fuels %}<option value="{{ value }}" {% if value in f.fuels %}selected{% endif %}>{{ value }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="unit_type">Unit type</label>
+                    <select class="form-select choices-multi" id="unit_type" name="unit_type" multiple data-placeholder="Any unit type">
+                        {% for value in options.unit_types %}<option value="{{ value }}" {% if value in f.unit_types %}selected{% endif %}>{{ value }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="control">Control technology</label>
+                    <select class="form-select choices-multi" id="control" name="control" multiple data-placeholder="Any control technology">
+                        {% for value in options.controls %}<option value="{{ value }}" {% if value in f.controls %}selected{% endif %}>{{ value }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="program">Emissions program</label>
+                    <select class="form-select choices-multi" id="program" name="program" multiple data-placeholder="Any program">
+                        {% for value in options.programs %}<option value="{{ value }}" {% if value in f.programs %}selected{% endif %}>{{ value }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="min_op_hours">Minimum operating hours</label>
+                    <input class="form-control" id="min_op_hours" name="min_op_hours" inputmode="decimal" value="{{ form.get('min_op_hours', '') }}" placeholder="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="min_gross_load">Minimum gross load (MWh)</label>
+                    <input class="form-control" id="min_gross_load" name="min_gross_load" inputmode="decimal" value="{{ form.get('min_gross_load', '') }}" placeholder="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="dataset_id">Dataset</label>
+                    <select class="form-select" id="dataset_id" name="dataset_id">
+                        <option value="">All datasets (newest copy)</option>
+                        {% for id, name in dataset_choices %}
+                            <option value="{{ id }}" {% if f.dataset_id == id %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+{# Choices.js turns the multi-select boxes into searchable drop-downs (same version as the retrieval page) #}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/styles/choices.min.css"
+      integrity="sha256-pTYPT12p21vMW/XFNnPkuRYiqtvjrFcnpgX/mmsU2gs=" crossorigin="anonymous" />
+<script src="https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/scripts/choices.min.js"
+        integrity="sha256-y2gFrdpOrzJR/lrb3l8vYsgOocKbeZmxWFRqd9HhkdY=" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Choices === 'undefined') { return; }  // if the library cannot load, plain multi-selects still work
+        document.querySelectorAll('select.choices-multi').forEach(function (el) {
+            new Choices(el, { removeItemButton: true, shouldSort: false, searchEnabled: true,
+                              placeholder: true, placeholderValue: el.dataset.placeholder,
+                              searchPlaceholderValue: 'Type to search', itemSelectText: '' });
+        });
+    });
+</script>

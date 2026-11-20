@@ -38,7 +38,7 @@
                     ({{ label }}: {{ '{:,}'.format(n) }} of them {{ 'has' if n == 1 else 'have' }} no value saved){{ ',' if not loop.last }}
                 {% endfor %}.
                 <div class="mt-2">
-                    {{ nav(url_for('retrieve.index', q=ft.query, relax=1), 'Show those %s record%s anyway' % ('{:,}'.format(ft.relaxable), '' if ft.relaxable == 1 else 's'), 'btn btn-sm btn-outline-secondary') }}
+                    {{ nav(url_for('explore.dataset_explorer', q=ft.query, relax=1), 'Show those %s record%s anyway' % ('{:,}'.format(ft.relaxable), '' if ft.relaxable == 1 else 's'), 'btn btn-sm btn-outline-secondary') }}
                 </div>
             </div>
         {% else %}
@@ -97,9 +97,9 @@
     </div>
     <nav>
         <ul class="pagination mb-0">
-            <li class="page-item {{ 'disabled' if ft.page <= 1 }}">{{ nav(url_for('retrieve.index', q=ft.query, relax=relax_arg, page=ft.page - 1), 'Prev', 'page-link') }}</li>
+            <li class="page-item {{ 'disabled' if ft.page <= 1 }}">{{ nav(url_for('explore.dataset_explorer', q=ft.query, relax=relax_arg, page=ft.page - 1), 'Prev', 'page-link') }}</li>
             <li class="page-item disabled"><span class="page-link">Page {{ ft.page }} of {{ ft.pages }}</span></li>
-            <li class="page-item {{ 'disabled' if ft.page >= ft.pages }}">{{ nav(url_for('retrieve.index', q=ft.query, relax=relax_arg, page=ft.page + 1), 'Next', 'page-link') }}</li>
+            <li class="page-item {{ 'disabled' if ft.page >= ft.pages }}">{{ nav(url_for('explore.dataset_explorer', q=ft.query, relax=relax_arg, page=ft.page + 1), 'Next', 'page-link') }}</li>
         </ul>
     </nav>
 {% endif %}

@@ -1,4 +1,4 @@
-# NEW FILE: the "load all data" job.
+#  the "load all data" job.
 #
 # Why this exists: asking the EPA for every state and year in ONE click means thousands of requests
 # in one go, and the EPA only allows about 1,000 requests per hour for each API key. This job
@@ -172,16 +172,23 @@ def _run(years, states, redo):
                 with Session() as session:
                     summary = import_annual_data(
                         session, annual, attributes,
-                        name=f"EPA CAMPD {code} {todo[0]}-{todo[-1]} (bulk load) {datetime.now():%Y-%m-%d %H:%M:%S}",
+                        # CHANGED: ONE dataset per state, added to by every later run (no timestamp in
+                        # the name). A run with nothing new creates no dataset at all.
+                        name=f"EPA CAMPD {code} (bulk load)",
                         years=todo,
                         query_params={"years": todo, "state_code": code, "bulk_load": True},
+                        reuse_dataset=True,
                     )
                 with _lock:
                     _job["states_done"] += 1
                     _job["records_saved"] += summary.get("accepted", 0)
-                _log(f"{code}: saved {summary.get('accepted', 0):,} records "
-                     f"({summary.get('skipped_identical', 0):,} identical skipped, "
-                     f"{summary.get('rejected', 0):,} rejected)")
+                if summary.get("accepted", 0):
+                    _log(f"{code}: saved {summary['accepted']:,} records "
+                         f"({summary.get('skipped_identical', 0):,} identical skipped, "
+                         f"{summary.get('rejected', 0):,} rejected)")
+                else:  # NEW: nothing to add, so no dataset was created
+                    _log(f"{code}: already up to date ({summary.get('skipped_identical', 0):,} records "
+                         f"identical to saved data, nothing new)")
             except Stopped:
                 raise
             except Exception as e:  # one bad state must not end the whole job

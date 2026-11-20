@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Compare{% endblock %}
+{% block header %}
+    <div class="w-100">
+        <h1 class="mb-1">Compare two groups</h1>
+        <p class="text-body-secondary mb-0">
+            For example Kentucky and Ohio, coal and natural gas, 2010-2014 and 2020-2024, or units with and without a scrubber.
+            The filters above limit which records are compared.
+        </p>
+    </div>
+{% endblock %}
+{% block content %}
+    {% include "fragments/analysis_tabs.html" %}
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('analysis.compare') }}" class="row g-3">
+                {% include "fragments/analysis_filters.html" %}
+                <div class="col-12"><hr class="my-1" /></div>
+                <div class="col-md-4">
+                    <label class="form-label" for="dimension">Compare by</label>
+                    <select class="form-select" id="dimension" name="dimension">
+                        {% for key, label in dimensions.items() %}
+                            <option value="{{ key }}" {% if key == dimension %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="a">Group A</label>
+                    <input class="form-control" id="a" name="a" value="{{ a }}" placeholder="KY, or Coal, or 2010-2014, or Scrubber" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="b">Group B <span class="text-body-secondary">(not used for with / without)</span></label>
+                    <input class="form-control" id="b" name="b" value="{{ b }}" placeholder="OH, or Natural gas, or 2020-2024" />
+                </div>
+                <div class="col-12">
+                    <div class="form-text mb-2">
+                        States are exact codes (several with commas). Fuel and unit type match text that contains the words.
+                        Periods can be one year (2015), a range (2010-2014) or a list (2010, 2012). With "with and without a control",
+                        Group A is the control word to look for (it is searched in the SO2, NOx and PM controls) and Group B is everything else.
+                    </div>
+                    <button class="btn btn-primary" type="submit">Compare</button>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('analysis.compare') }}">Clear</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {% for e in f.errors %}<div class="alert alert-warning mb-0">{{ e }}</div>{% endfor %}
+    {% if error %}<div class="alert alert-danger mb-0">{{ error }}</div>{% endif %}
+
+    {% if display %}
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h2 class="h5 mb-0">A: {{ labels[0] }} &nbsp;versus&nbsp; B: {{ labels[1] }}</h2>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl() }}">Download CSV</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl('xlsx') }}">Download Excel</a>
+                    </div>
+                </div>
+                <p class="small text-body-secondary">
+                    Group A: {{ '{:,}'.format(counts[0]) }} unit-years from {{ '{:,}'.format(counts[2]) }} units.
+                    Group B: {{ '{:,}'.format(counts[1]) }} unit-years from {{ '{:,}'.format(counts[3]) }} units.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr>{% for c in display[0] %}<th {% if loop.index > 2 %}class="text-end"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+                        <tbody>
+                            {% for row in display[1] %}
+                                <tr>{% for cell in row %}<td {% if loop.index > 2 %}class="text-end"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">How to read this</h2>
+                <ul class="small mb-0">
+                    <li>Differences are <strong>B minus A</strong>. A positive number means group B is higher. The percentage is relative to A's mean.</li>
+                    <li>The <strong>95% confidence interval</strong> is the range that likely contains the true difference in means. If it includes 0, the data do not clearly show a difference.</li>
+                    <li>Two tests are shown. The <strong>Welch t-test</strong> compares means. The <strong>Mann-Whitney test</strong> compares ranks and does not assume a bell-shaped distribution, which suits emissions data that are very skewed. A p-value below 0.05 means a difference this large would be unusual if the groups were really the same.</li>
+                    <li>"Detectable difference" is <em>yes</em> only when both tests agree, <em>unclear</em> when they disagree.</li>
+                    <li><strong>Limits:</strong> a detectable difference does not show a cause (plant size, age or location can differ). Several years of the same unit are not independent, so the p-values are somewhat optimistic. Missing values are left out of each group's numbers, and "values" shows how many each result is based on.</li>
+                </ul>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

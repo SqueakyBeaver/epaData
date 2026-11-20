@@ -15,7 +15,7 @@ from epadata.routes.utils import table_download  # NEW: CSV / Excel downloads
 bp = Blueprint("retrieve", __name__, url_prefix="/retrieve")
 
 
-# ---- updated: full-text search box (searches ALL saved data, independent of the filters) ----
+# ---- the full-text search box moved to the Dataset Explorer; only its CSV/Excel download stays here ----
 
 
 def wants_fragment():
@@ -28,7 +28,7 @@ def wants_fragment():
 
 @bp.after_request
 def vary_on_htmx(resp):
-    # update: the same URL returns a fragment or a whole page, so caches must know
+    # NEW: the same URL returns a fragment or a whole page, so caches must know
     resp.vary.add("HX-Request")
     return resp
 
@@ -39,7 +39,7 @@ def fulltext_download():
     ft = fulltext.search(
         request.args.get("q", ""), per_page=None, relax=request.args.get("relax") == "1"
     )
-    if ft["ranking"]:  # update: a "top 10 ..." sentence downloads the ranking, not a text search
+    if ft["ranking"]:  # NEW: a "top 10 ..." sentence downloads the ranking, not a text search
         return redirect(
             url_for(
                 "explore.rank_download",
@@ -73,20 +73,13 @@ def fulltext_download():
 
 @bp.route("/")
 def index():
-    # update: "?q=" is the full-text search box. It never touches the filter form below it.
+    # NEW: "?q=" is the full-text search box. It never touches the filter form below it.
     # htmx gets just the results; a reload, a shared link or the back button gets the whole
     # page with the results filled in.
-    page_data = {}
+    # CHANGED: the full-text search now lives on the Dataset Explorer page (it searches the
+    # database, it does not call the EPA). Old links such as /retrieve/?q=... are sent there.
     if "q" in request.args:
-        page_data["ft"] = fulltext.search(
-            request.args.get("q", ""),
-            page=request.args.get("page", 1, type=int),
-            relax=request.args.get("relax") == "1",
-        )
-        if wants_fragment():
-            return render_template(
-                "fragments/search/fulltext_results.html", ft=page_data["ft"]
-            )
+        return redirect(url_for("explore.dataset_explorer", **request.args))
 
     client = CAMPDClient()
 
@@ -96,9 +89,8 @@ def index():
         fuel_type_codes=client.get_fuel_type_codes(),
         unit_type_codes=client.get_unit_type_codes(),
         control_codes=client.get_control_codes(),
-        source_categories=SOURCE_CATEGORIES,  # update
-        bulk=bulkload.snapshot(),  # update: progress of the "load all data" job (if one ran)
-        **page_data,  # update: adds "ft" only when a search was run
+        source_categories=SOURCE_CATEGORIES,  # NEW
+        bulk=bulkload.snapshot(),  # NEW: progress of the "load all data" job (if one ran)
     )
 
 
@@ -112,7 +104,7 @@ def filter_facilities():
     )
 
 
-# update: the EPA accepts exactly these source categories (from its facilities API documentation);
+# NEW: the EPA accepts exactly these source categories (from its facilities API documentation);
 # there is no endpoint that lists them, so the form's drop-down is filled from this list.
 SOURCE_CATEGORIES = [
     "Automotive Stampings", "Bulk Industrial Chemical", "Cement Manufacturing", "Cogeneration",
@@ -121,7 +113,7 @@ SOURCE_CATEGORIES = [
     "Portland Cement Plant", "Small Power Producer", "Theme Park",
 ]
 
-# update: how each filter is named in the form, and what to call it on screen
+# NEW: how each filter is named in the form, and what to call it on screen
 FILTER_LABELS = {
     "state_code": "state",
     "facility_id": "facility",
@@ -318,7 +310,7 @@ def retrieve_data():
     )
 
 
-# ---- updated: "Load many years or all states" (see bulkload.py) ----
+# ---- NEW: "Load many years or all states" (see bulkload.py) ----
 
 
 def _bulk_fragment():

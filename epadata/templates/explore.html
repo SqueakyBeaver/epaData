@@ -102,6 +102,10 @@
             {% endif %}
         </div>
     </section>
+    {# NEW (moved from the EPA Retrieval page): full-text search over everything saved in the database #}
+    <div class="mt-4">
+        {% include "fragments/search/fulltext_bar.html" %}
+    </div>
     {# NEW: Top-N / Bottom-N search over everything saved in the database #}
     {% if rank_metrics is defined %}
         {% include "fragments/search/rank_form.html" %}

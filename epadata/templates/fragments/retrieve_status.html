@@ -36,9 +36,16 @@
                         <h2 class="h5">Retrieval finished: the EPA returned no records</h2>
                         <p class="mb-0">Nothing was saved. Try different years or filters.</p>
                     {% else %}
+                        {# CHANGED: nothing new means no dataset was created, so only say "saved as" when there is one #}
+                        {% if summary.dataset_name %}
                         <p class="mb-2 text-body-secondary">
                             Saved as dataset <strong>{{ summary.dataset_name }}</strong>
                         </p>
+                        {% else %}
+                        <p class="mb-2 text-body-secondary">
+                            No dataset was created: every record was already saved or could not be saved.
+                        </p>
+                        {% endif %}
                         <ul class="list-unstyled mb-2">
                             {# NEW: the user-selected filters, echoed back (the assignment asks for them) #}
                             <li>

@@ -1,4 +1,4 @@
-{# Full-text search box. Included at the bottom of retrieve.html, below the retrieval filters.
+{# Full-text search box. Included on the Dataset Explorer page (it used to be on the EPA Retrieval page).
    Needs `ft` (the search result) only when a search was already run.
     plainer box (a bordered fieldset), normal-sized input, and the "click an example" buttons are gone.
    One example sentence is shown as the placeholder text inside the search box instead. #}
@@ -13,12 +13,12 @@
             In a sentence it finds the fuel, state, year, an amount limit on CO2, SO2, NOx, heat input, gross load or
             operating hours (greater than, less than, at least, between), and "top" or "bottom" N. A line above the
             results shows how it read the sentence. Anything else is matched as words, best match first. A record with
-            no value for an amount never matches a condition on it. This is separate from the retrieval filters above.
+            no value for an amount never matches a condition on it.
         </p>
         <form class="d-flex flex-wrap gap-2 align-items-end"
-              action="{{ url_for('retrieve.index') }}"
+              action="{{ url_for('explore.dataset_explorer') }}"
               method="get"
-              hx-get="{{ url_for('retrieve.index') }}"
+              hx-get="{{ url_for('explore.dataset_explorer') }}"
               hx-target="#fulltext-results"
               hx-push-url="true"
               hx-indicator="#fulltext-spinner">
@@ -56,7 +56,7 @@
 </section>
 <script>
     // When the page opens with a search already in the address (a shared link, a reload),
-    // scroll down to the results, because the search box is at the bottom of the page.
+    // scroll down to the results, because the search box is below the dataset cards.
     document.addEventListener('DOMContentLoaded', function () {
         var results = document.querySelector('#fulltext-results > *');
         if (results) { document.getElementById('fulltext-search').scrollIntoView(); }

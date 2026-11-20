@@ -10,6 +10,8 @@
     </div>
 {% endblock %}
 {% block content %}
+    {% set active = "traci" %}
+    {% include "fragments/analysis_tabs.html" %}
     <section class="card shadow-sm">
         <div class="card-body">
             <h2 class="h5">How the calculation works</h2>

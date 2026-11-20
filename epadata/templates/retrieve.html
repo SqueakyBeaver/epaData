@@ -154,11 +154,8 @@
     </form>
     {% include "fragments/bulk_status.html" %}
   </fieldset>
-  {#  the full-text search is now BELOW the retrieval form, because retrieving saves the
-     data that this search looks through. It searches everything saved: retrieved and uploaded. #}
-  <div class="mt-5">
-    {% include "fragments/search/fulltext_bar.html" %}
-  </div>
+  {# CHANGED: the full-text search box moved to the Dataset Explorer page: it searches the saved
+     database and never calls the EPA, so it does not belong on this page. #}
 {% endblock %}
 {% block scripts %}
   <script defer>

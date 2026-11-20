@@ -1,0 +1,10 @@
+{#  the row of tabs shared by the analysis pages. The current filters are carried from tab to tab
+   in the links, so you can move between pages without re-entering them. Needs: active. Optional: filter_query. #}
+{% set q = filter_query|default({}) %}
+<ul class="nav nav-tabs">
+    <li class="nav-item"><a class="nav-link {% if active == 'builder' %}active{% endif %}" href="{{ url_for('analysis.index', **q) if q else url_for('analysis.index') }}">Dataset builder</a></li>
+    <li class="nav-item"><a class="nav-link {% if active == 'stats' %}active{% endif %}" href="{{ url_for('analysis.stats', **q) }}">Statistics</a></li>
+    <li class="nav-item"><a class="nav-link {% if active == 'compare' %}active{% endif %}" href="{{ url_for('analysis.compare', **q) }}">Compare</a></li>
+    <li class="nav-item"><a class="nav-link {% if active == 'impact' %}active{% endif %}" href="{{ url_for('analysis.impact', **q) }}">TRACI impact</a></li>
+    <li class="nav-item"><a class="nav-link {% if active == 'traci' %}active{% endif %}" href="{{ url_for('analysis.traci_page') }}">TRACI factors</a></li>
+</ul>

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}TRACI impact{% endblock %}
+{% block header %}
+    <div class="w-100">
+        <h1 class="mb-1">Potential Environmental and Health Impact (TRACI)</h1>
+        <p class="text-body-secondary mb-0">CAMPD emissions multiplied by EPA TRACI characterization factors, totalled by group.</p>
+    </div>
+{% endblock %}
+{% block content %}
+    {% include "fragments/analysis_tabs.html" %}
+    <section class="card shadow-sm">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('analysis.impact') }}" class="row g-3">
+                {% include "fragments/analysis_filters.html" %}
+                <div class="col-12"><hr class="my-1" /></div>
+                <div class="col-md-4">
+                    <label class="form-label" for="group_by">Total by</label>
+                    <select class="form-select" id="group_by" name="group_by">
+                        {% for key, label in group_dims.items() %}
+                            <option value="{{ key }}" {% if key == group_by %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if versions|length > 1 %}
+                    <div class="col-md-3">
+                        <label class="form-label" for="version">TRACI version</label>
+                        <select class="form-select" id="version" name="version">
+                            {% for v in versions %}<option value="{{ v }}" {% if v == version %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit">Calculate impacts</button>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('analysis.impact') }}">Clear</a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {% for e in f.errors %}<div class="alert alert-warning mb-0">{{ e }}</div>{% endfor %}
+
+    {% if not has_factors %}
+        <div class="alert alert-info mb-0">No TRACI factors are stored yet. Import them on the
+            <a href="{{ url_for('analysis.traci_page') }}">TRACI factors</a> page first.</div>
+    {% elif records == 0 %}
+        <div class="alert alert-info mb-0">No records match these filters. Widen them, or load data on the
+            <a href="{{ url_for('retrieve.index') }}">EPA Retrieval</a> page.</div>
+    {% else %}
+        <section class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h2 class="h5 mb-0">How these numbers are calculated</h2>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl() }}">Download CSV (all categories)</a>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ dl('xlsx') }}">Download Excel</a>
+                    </div>
+                </div>
+                <ol class="small mb-2">
+                    <li>Emissions in short tons &times; {{ short_ton_kg }} = kilograms.</li>
+                    <li>Kilograms &times; the TRACI factor for the pollutant and category = potential impact. Pollutants are added up only within the same category; categories are never added together because their units differ.</li>
+                    <li>Impact per MWh = total impact &divide; total gross load, using only the unit-years that have both a result and a positive gross load.</li>
+                </ol>
+                <p class="small text-body-secondary mb-0">
+                    A unit-year with a missing amount for a pollutant that the category needs has no result for that category
+                    (counted under "unit-years missing"); it is never counted as zero. These are <em>potential</em> impacts for comparing
+                    groups. They do not measure actual illness, local exposure or proven environmental damage.
+                </p>
+            </div>
+        </section>
+
+        {% for s in sections %}
+            <section class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">{{ s.category }} <span class="text-body-secondary fs-6">({{ s.unit }}, TRACI {{ s.version }})</span></h2>
+                    <p class="small mb-2">Factors used:
+                        {% for pollutant, v in s.factors.items() %}{{ pollutant }} = {{ v.factor }} ({{ v.substance }}){% if not loop.last %}; {% endif %}{% endfor %}.
+                        Pollutants without a factor in this category are not included.</p>
+                    {% if s.total_groups > s.shown_groups %}
+                        <p class="small text-body-secondary">Showing the first {{ s.shown_groups }} of {{ '{:,}'.format(s.total_groups) }} groups. The download has all of them.</p>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead><tr>{% for c in s.table[0] %}<th {% if not loop.first %}class="text-end"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+                            <tbody>
+                                {% for row in s.table[1] %}
+                                    <tr>{% for cell in row %}<td {% if not loop.first %}class="text-end"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        {% endfor %}
+    {% endif %}
+{% endblock %}

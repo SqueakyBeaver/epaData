@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 
 
 from epadata import ranking  # NEW: Top-N / Bottom-N search
+from epadata import search as fulltext  # NEW: full-text search (Whoosh), moved here from the retrieval page
 from epadata.campd import CAMPDClient
 from epadata.db import Session
 from epadata.db.models import AnnualRecord, Dataset, Facility, Unit
@@ -81,6 +82,18 @@ def dataset_explorer():
     """Browse all datasets persisted in the application database via DataTables."""
     # NEW: "?rank_by=..." runs the Top-N / Bottom-N search below the dataset cards. htmx gets just
     # the results; a reload, a shared link or the back button gets the whole page.
+    # NEW: "?q=" is the full-text search box (moved here from the EPA Retrieval page). htmx gets just
+    # the results; a reload, a shared link or the back button gets the whole page.
+    extra = {}
+    if "q" in request.args:
+        extra["ft"] = fulltext.search(
+            request.args.get("q", ""),
+            page=request.args.get("page", 1, type=int),
+            relax=request.args.get("relax") == "1",
+        )
+        if wants_fragment():
+            return render_template("fragments/search/fulltext_results.html", ft=extra["ft"])
+
     rk = None
     if request.args.get("rank_by") is not None:
         rk = ranking.rank(request.args, page=request.args.get("page", 1, type=int))
@@ -131,6 +144,7 @@ def dataset_explorer():
         dataset_rows=dataset_rows,
         rk=rk,  # NEW: the ranking result, or None
         rank_metrics=ranking.METRICS,  # NEW: fills the "rank by" drop-down
+        **extra,  # NEW: adds "ft" only when a search was run
     )
 
 

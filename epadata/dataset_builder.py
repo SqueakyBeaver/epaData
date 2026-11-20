@@ -1,4 +1,4 @@
-# NEW FILE (Phase 2): the analytical data layer (the "analytical dataset builder").
+#  (Phase 2): the analytical data layer (the "analytical dataset builder").
 #
 # What it does, in order:
 #   1. Filters      read the filters from the URL (so an analysis can be shared and repeated).
@@ -66,6 +66,67 @@ def _split(text):
     return [part.strip() for part in (text or "").split(",") if part.strip()]
 
 
+# NEW: the filter boxes are now drop-downs that can send several values (state=FL&state=GA).
+# Typed or older links such as state=FL,GA still work, so both forms are read here.
+def _values(args, name):
+    raw = args.getlist(name) if hasattr(args, "getlist") else [args.get(name)]
+    return [part for text in raw for part in _split(text)]
+
+
+# NEW: full names, so "Florida" and "florida" work as well as "FL" (the filter itself uses codes)
+US_STATES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
+    "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "DC": "District of Columbia",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
+    "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana",
+    "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
+    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon",
+    "PA": "Pennsylvania", "PR": "Puerto Rico", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
+    "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+}
+_STATE_CODE_BY_NAME = {name.lower(): code for code, name in US_STATES.items()}
+
+
+def state_code(text):
+    """'fl', 'FL', 'Florida' or 'florida' -> 'FL'. Anything unknown is kept in capitals."""
+    t = text.strip()
+    return _STATE_CODE_BY_NAME.get(t.lower(), t.upper())
+
+
+_options_cache = {"time": 0.0, "value": None}
+
+
+def filter_options(session):
+    """NEW: what is actually in the database, for the filter drop-downs.
+    Returns {"states": [(code, 'Florida (FL)')], "fuels": [...], "unit_types": [...],
+    "controls": [...], "programs": [...]}. Kept for 60 seconds so the pages stay quick."""
+    import time
+    if _options_cache["value"] is not None and time.time() - _options_cache["time"] < 60:
+        return _options_cache["value"]
+
+    def distinct(*columns):
+        # one value per comma-separated part, so a combined entry such as "ARP, CSNOX" gives two
+        found = set()
+        for column in columns:
+            for (text,) in session.execute(select(column).where(column.is_not(None)).distinct()):
+                found.update(_split(text))
+        return sorted(found, key=str.lower)
+
+    codes = sorted(session.scalars(select(Facility.state).where(Facility.state.is_not(None)).distinct()))
+    value = {
+        "states": [(c, f"{US_STATES[c]} ({c})" if c in US_STATES else c) for c in codes],
+        "fuels": distinct(Unit.primary_fuel),
+        "unit_types": distinct(Unit.type),
+        "controls": distinct(AnnualRecord.so2_controls, AnnualRecord.nox_controls, AnnualRecord.pm_controls),
+        "programs": distinct(AnnualRecord.program_code),
+    }
+    _options_cache.update(time=time.time(), value=value)
+    return value
+
+
 @dataclass
 class Filters:
     year_from: int | None = None
@@ -105,17 +166,17 @@ class Filters:
         if f.year_from and f.year_to and f.year_from > f.year_to:
             f.errors.append("'Year from' was after 'year to', so the two were swapped.")
             f.year_from, f.year_to = f.year_to, f.year_from
-        f.states = [s.upper() for s in _split(args.get("state"))]
+        f.states = [state_code(s) for s in _values(args, "state")]  # CHANGED: names work, several values
         for part in _split(args.get("facility_id")):
             if part.isdigit():
                 f.facility_ids.append(int(part))
             else:
                 f.errors.append(f"Facility ID '{part}' is not a number; it was ignored.")
         f.unit_ids = _split(args.get("unit_id"))
-        f.fuels = _split(args.get("fuel"))
-        f.unit_types = _split(args.get("unit_type"))
-        f.controls = _split(args.get("control"))
-        f.programs = _split(args.get("program"))
+        f.fuels = _values(args, "fuel")  # CHANGED: drop-downs send one parameter per choice
+        f.unit_types = _values(args, "unit_type")
+        f.controls = _values(args, "control")
+        f.programs = _values(args, "program")
         f.min_op_hours = number("min_op_hours", float, 0, 8784)
         f.min_gross_load = number("min_gross_load", float, 0)
         f.dataset_id = number("dataset_id", int, 1)
